@@ -1,0 +1,106 @@
+{
+  "locale": "nb-NO",
+  "currency": {
+    "name": "Norwegian Krone",
+    "short": "NOK",
+    "symbol": "kr"
+  },
+  "yourCompany": {
+    "name": "Format Test AS",
+    "orgno": "123456789",
+    "adr": [
+      "Testveien 123",
+      "0123 Oslo"
+    ]
+  },
+  "yourBank": {
+    "accno": "1234.56.78901",
+    "iban": "NO93 1234 5678 901",
+    "bic": "DNBANOKKXXX",
+    "bank": "DNB Bank ASA"
+  },
+  "invoiceMeta": {
+    "invoiceDate": {
+      "value": "2024-12-25"
+    },
+    "dueDate": {
+      "value": "2025-01-15T23:59:59.000Z"
+    },
+    "invoiceNumber": {
+      "value": "2025-001"
+    }
+  },
+  "customer": {
+    "name": "Test Customer AS",
+    "orgno": "987654321",
+    "adr": [
+      "Kundeveien 456",
+      "5678 Bergen"
+    ]
+  },
+  "lines": [
+    {
+      "date": "2024-12-20",
+      "description": "Large amount test",
+      "price": "123456.78"
+    },
+    {
+      "date": "2024-12-21", 
+      "description": "Medium amount test",
+      "price": "12345.67"
+    },
+    {
+      "date": "2024-12-22",
+      "description": "Small amount test",
+      "price": "1234.56"
+    },
+    {
+      "date": "2024-12-23",
+      "description": "Very large amount test",
+      "price": "1234567.89"
+    }
+  ],
+  "pdfTitle": "Format Test Invoice",
+  "vat": {
+    "enabled": true,
+    "rate": 25
+  },
+  "meta": {
+    "title": {
+      "nb-NO": "FAKTURA",
+      "en-US": "INVOICE"
+    },
+    "payInfo": {
+      "nb-NO": {
+        "invoiceDate": "Fakturadato:",
+        "dueDate": "Forfallsdato:",
+        "invoiceNumber": "Fakturanummer:"
+      },
+      "en-US": {
+        "invoiceDate": "Invoice Date:",
+        "dueDate": "Due Date:",
+        "invoiceNumber": "Invoice Number:"
+      }
+    },
+    "lineHeadings": {
+      "nb-NO": {
+        "date": "Dato",
+        "description": "Beskrivelse", 
+        "price": "Pris",
+        "vat": "MVA",
+        "sum": "Sum"
+      },
+      "en-US": {
+        "date": "Date",
+        "description": "Description",
+        "price": "Price",
+        "vat": "VAT",
+        "sum": "Total"
+      }
+    },
+    "payableTo": {
+      "nb-NO": "Betales til:",
+      "en-US": "Pay to:"
+    }
+  }
+}

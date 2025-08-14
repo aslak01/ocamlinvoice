@@ -1,0 +1,5 @@
+(executable
+ (public_name invoice-generator)
+ (name main)
+ (libraries camlpdf yojson)
+ (modules main json_parser types formatting_utils pdf_text invoice_layout pdf_document pdf_generator))

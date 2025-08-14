@@ -1,0 +1,100 @@
+{
+  "currency": {
+    "name": "Norwegian Krone",
+    "short": "NOK",
+    "symbol": "kr"
+  },
+  "yourCompany": {
+    "name": "Firmaet mitt AS",
+    "orgno": "123456789",
+    "adr": [
+      "Gatevei 123",
+      "1234 Bosted"
+    ]
+  },
+  "yourBank": {
+    "accno": "1234.56.78901",
+    "iban": "NO93 1234 5678 901",
+    "bic": "DNBANOKKXXX",
+    "bank": "DNB Bank ASA"
+  },
+  "invoiceMeta": {
+    "invoiceDate": {
+      "value": "2024-01-15T00:00:00.000Z"
+    },
+    "dueDate": {
+      "value": "2024-02-15T00:00:00.000Z"
+    },
+    "invoiceNumber": {
+      "value": "2025-001"
+    }
+  },
+  "customer": {
+    "name": "Kunde Kundestad",
+    "orgno": "987654321",
+    "adr": [
+      "Kundevei 456",
+      "5678 Kjøpstad"
+    ]
+  },
+  "lines": [
+    {
+      "date": "2025-01-10",
+      "description": "Web Development Services",
+      "price": "15000"
+    },
+    {
+      "date": "2025-01-12",
+      "description": "Project Management",
+      "price": "5000"
+    },
+    {
+      "date": "2025-01-14",
+      "description": "System Architecture",
+      "price": "8000"
+    }
+  ],
+  "pdfTitle": "2025-001",
+  "vat": {
+    "enabled": false,
+    "rate": 25
+  },
+  "meta": {
+    "title": {
+      "nb-NO": "FAKTURA",
+      "en-US": "INVOICE"
+    },
+    "payInfo": {
+      "nb-NO": {
+        "invoiceDate": "Fakturadato:",
+        "dueDate": "Forfallsdato:",
+        "invoiceNumber": "Fakturanummer:"
+      },
+      "en-US": {
+        "invoiceDate": "Invoice Date:",
+        "dueDate": "Due Date:",
+        "invoiceNumber": "Invoice Number:"
+      }
+    },
+    "lineHeadings": {
+      "nb-NO": {
+        "date": "Dato",
+        "description": "Beskrivelse",
+        "price": "Pris",
+        "vat": "MVA",
+        "sum": "Sum"
+      },
+      "en-US": {
+        "date": "Date",
+        "description": "Description",
+        "price": "Price",
+        "vat": "VAT",
+        "sum": "Total"
+      }
+    },
+    "payableTo": {
+      "nb-NO": "Betales til:",
+      "en-US": "Pay to:"
+    }
+  }
+}
