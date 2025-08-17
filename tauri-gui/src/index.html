@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice Generator</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <main class="container">
+      <h1>🧾 Invoice Generator</h1>
+      
+      <div class="tabs">
+        <button class="tab active" data-tab="sender">Sender Information</button>
+        <button class="tab" data-tab="bankdetails">Bank Details</button>
+        <button class="tab" data-tab="invoice">Invoice Details</button>
+        <button class="tab" data-tab="recipients">Recipients</button>
+      </div>
+      
+      <div class="tab-content">
+        <!-- Sender tab -->
+        <div id="sender-tab" class="tab-panel active">
+          <h3>Sender Information</h3>
+          <textarea id="sender-editor" placeholder="Enter sender details here..."></textarea>
+        </div>
+        
+        <!-- Bank details tab -->
+        <div id="bankdetails-tab" class="tab-panel">
+          <h3>Bank Details</h3>
+          <textarea id="bankdetails-editor" placeholder="Enter bank details here..."></textarea>
+        </div>
+        
+        <!-- Invoice details tab -->
+        <div id="invoice-tab" class="tab-panel">
+          <h3>Invoice Details</h3>
+          <div class="dual-input">
+            <label for="description-editor">Description:</label>
+            <textarea id="description-editor" placeholder="Enter invoice description here..."></textarea>
+            
+            <label for="amount-editor">Amount (NOK):</label>
+            <textarea id="amount-editor" placeholder="Enter amount here (e.g., 3750.50)"></textarea>
+          </div>
+        </div>
+        
+        <!-- Recipients tab -->
+        <div id="recipients-tab" class="tab-panel">
+          <h3>Recipients</h3>
+          <textarea id="recipients-editor" placeholder="Enter recipients here..."></textarea>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button id="save-btn" class="save-btn">💾 Save All Files</button>
+        <button id="generate-btn" class="generate-btn">🚀 Generate Invoices</button>
+        <button id="preview-btn" class="preview-btn">👁️ Preview Mode</button>
+      </div>
+      
+      <div id="status" class="status hidden"></div>
+      <div id="output" class="output hidden"></div>
+    </main>
+  </body>
+</html>

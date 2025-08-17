@@ -106,14 +106,14 @@ let process_recipients invoice_data bank_lines recipients invoice_info_opt =
       process_all 0 recipients
   )
 
-let () =
-  Arg.parse spec_list (fun _ -> ()) usage_msg;
-  
+let run_cli_mode dry_run =
   try
     (* Required files *)
-    let sender_file = "sender.txt" in
-    let bank_file = "bankdetails.txt" in
-    let invoice_file = "invoice.txt" in
+    let sender_file = "config/sender.txt" in
+    let bank_file = "config/bankdetails.txt" in
+    let description_file = "config/description.txt" in
+    let amount_file = "config/amount.txt" in
+    let invoice_file = "config/invoice.txt" in
     
     (* Check required files exist *)
     if not (Invoice_src.File_parsers.file_exists sender_file) then (
@@ -126,8 +126,16 @@ let () =
       exit 1
     );
     
-    if not (Invoice_src.File_parsers.file_exists invoice_file) then (
-      eprintf "Error: Required file %s not found\n" invoice_file;
+    (* Check for new separate files first, fallback to old format *)
+    let has_separate_files = 
+      Invoice_src.File_parsers.file_exists description_file && 
+      Invoice_src.File_parsers.file_exists amount_file in
+    
+    let has_old_invoice_file = Invoice_src.File_parsers.file_exists invoice_file in
+    
+    if not has_separate_files && not has_old_invoice_file then (
+      eprintf "Error: Neither separate files (%s, %s) nor old format file (%s) found\n" 
+        description_file amount_file invoice_file;
       exit 1
     );
     
@@ -138,18 +146,29 @@ let () =
     printf "Reading bank details from %s...\n" bank_file;
     let bank_lines = Invoice_src.File_parsers.parse_text_file bank_file in
     
-    printf "Reading invoice details from %s...\n" invoice_file;
-    let invoice_info = match Invoice_src.Invoice_parser.parse_invoice_file invoice_file with
-      | Some info -> info
-      | None -> 
-          eprintf "Error: Failed to parse %s\n" invoice_file;
-          exit 1 in
+    (* Parse invoice details using appropriate method *)
+    let invoice_info = 
+      if has_separate_files then (
+        printf "Reading invoice details from %s and %s...\n" description_file amount_file;
+        match Invoice_src.Invoice_parser.parse_invoice_files description_file amount_file with
+        | Some info -> info
+        | None -> 
+            eprintf "Error: Failed to parse %s or %s\n" description_file amount_file;
+            exit 1
+      ) else (
+        printf "Reading invoice details from %s...\n" invoice_file;
+        match Invoice_src.Invoice_parser.parse_invoice_file invoice_file with
+        | Some info -> info
+        | None -> 
+            eprintf "Error: Failed to parse %s\n" invoice_file;
+            exit 1
+      ) in
     
     printf "Invoice description: %s\n" (if invoice_info.Invoice_src.Invoice_parser.description = "" then "(empty)" else invoice_info.Invoice_src.Invoice_parser.description);
     printf "Total amount: %.2f NOK\n" invoice_info.Invoice_src.Invoice_parser.total_amount;
     
     (* Check for recipients.txt file *)
-    let recipients_file = "recipients.txt" in
+    let recipients_file = "config/recipients.txt" in
     
     if Invoice_src.Recipients_parser.recipients_file_exists recipients_file then (
       printf "Found %s - generating invoices for multiple recipients\n" recipients_file;
@@ -167,7 +186,7 @@ let () =
         invoice_info.Invoice_src.Invoice_parser.description 
         invoice_info.Invoice_src.Invoice_parser.total_amount in
       
-      if !dry_run then (
+      if dry_run then (
         printf "DRY RUN MODE - Preview mode for batch processing\n";
         printf "Would generate %d invoices for:\n" (List.length recipients);
         
@@ -199,3 +218,16 @@ let () =
   | exn ->
       eprintf "Error: %s\n" (Printexc.to_string exn);
       exit 1
+
+let () =
+  (* Check if any command line arguments were provided *)
+  let has_args = Array.length Sys.argv > 1 in
+  
+  if has_args then (
+    (* CLI mode - parse arguments and run *)
+    Arg.parse spec_list (fun _ -> ()) usage_msg;
+    run_cli_mode !dry_run
+  ) else (
+    (* No arguments - show web GUI *)
+    Invoice_src.Gui.show_config_editor ()
+  )

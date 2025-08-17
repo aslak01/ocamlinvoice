@@ -13,6 +13,32 @@ let parse_amount amount_str =
   with
   | Failure _ -> None
 
+let read_file_content filename =
+  try
+    let ic = open_in filename in
+    let content = really_input_string ic (in_channel_length ic) in
+    close_in ic;
+    Some (String.trim content)
+  with
+  | Sys_error _ -> None
+
+let parse_invoice_files description_file amount_file =
+  match read_file_content description_file, read_file_content amount_file with
+  | Some description, Some amount_str ->
+      (match parse_amount amount_str with
+       | Some amount -> Some { description; total_amount = amount }
+       | None -> None)
+  | Some description, None ->
+      (* If no amount file, default to 0.0 *)
+      Some { description; total_amount = 0.0 }
+  | None, Some amount_str ->
+      (* If no description file, use empty description *)
+      (match parse_amount amount_str with
+       | Some amount -> Some { description = ""; total_amount = amount }
+       | None -> None)
+  | None, None -> None
+
+(* Keep backward compatibility *)
 let parse_invoice_file filename =
   try
     let ic = open_in filename in
