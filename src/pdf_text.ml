@@ -26,6 +26,27 @@ let calculate_text_width text size =
   let width_in_millipoints = Pdfstandard14.textwidth false Pdftext.WinAnsiEncoding helvetica_font text in
   (float_of_int width_in_millipoints /. 1000.0) *. size
 
+(* Text wrapping functionality *)
+let wrap_text text max_width font_size =
+  let words = String.split_on_char ' ' text in
+  let rec build_lines acc current_line current_width = function
+    | [] -> 
+        if current_line = "" then List.rev acc
+        else List.rev (String.trim current_line :: acc)
+    | word :: remaining_words ->
+        let word_width = calculate_text_width (word ^ " ") font_size in
+        let new_width = current_width +. word_width in
+        if new_width <= max_width || current_line = "" then
+          (* Word fits on current line or it's the first word on the line *)
+          let new_line = if current_line = "" then word else current_line ^ " " ^ word in
+          build_lines acc new_line new_width remaining_words
+        else
+          (* Word doesn't fit, start new line *)
+          let trimmed_line = String.trim current_line in
+          build_lines (trimmed_line :: acc) word (calculate_text_width (word ^ " ") font_size) remaining_words
+  in
+  build_lines [] "" 0.0 words
+
 type pdf_content = string list
 
 let empty_content = []
@@ -107,3 +128,31 @@ let create_table_row config values columns y =
     | `Right -> right_aligned_text escaped_value col_config.x y config.font_size_normal
   ) values columns in
   List.flatten row_ops
+
+(* Multi-line table row for wrapped text *)
+let create_multiline_table_row config values columns y max_width_for_first_col =
+  match values, columns with
+  | [description; price], [desc_col; price_col] ->
+      (* Wrap the description text *)
+      let wrapped_lines = wrap_text description max_width_for_first_col config.font_size_normal in
+      let escaped_price = Formatting_utils.escape_pdf_string price in
+      
+      (* Create text operations for each line of description *)
+      let desc_ops = List.mapi (fun i line ->
+        let line_y = y -. (float_of_int i *. config.line_height) in
+        let escaped_line = Formatting_utils.escape_pdf_string line in
+        text_at_position escaped_line desc_col.x line_y config.font_size_normal
+      ) wrapped_lines in
+      
+      (* Create price text (only on first line) *)
+      let price_ops = match price_col.alignment with
+        | `Left -> text_at_position escaped_price price_col.x y config.font_size_normal
+        | `Right -> right_aligned_text escaped_price price_col.x y config.font_size_normal in
+      
+      let all_ops = List.flatten desc_ops @ price_ops in
+      let total_height = float_of_int (List.length wrapped_lines) *. config.line_height in
+      (all_ops, total_height)
+  | _ ->
+      (* Fallback to regular table row for other cases *)
+      let ops = create_table_row config values columns y in
+      (ops, config.line_height)

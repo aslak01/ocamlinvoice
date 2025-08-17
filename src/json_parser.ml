@@ -85,3 +85,78 @@ let parse_invoice_data json =
 let load_from_file filename =
   let json = Yojson.Basic.from_file filename in
   parse_invoice_data json
+
+let currency_to_json (curr : Types.currency) =
+  `Assoc [
+    ("name", `String curr.name);
+    ("short", `String curr.short);
+    ("symbol", match curr.symbol with Some s -> `String s | None -> `Null);
+  ]
+
+let company_to_json company =
+  `Assoc [
+    ("name", `String company.name);
+    ("orgno", `String company.orgno);
+    ("adr", `List (List.map (fun s -> `String s) company.adr));
+  ]
+
+let bank_to_json bank =
+  `Assoc [
+    ("accno", `String bank.accno);
+    ("iban", `String bank.iban);
+    ("bic", `String bank.bic);
+    ("bank", `String bank.bank);
+  ]
+
+let invoice_date_field_to_json field =
+  `Assoc [("value", `String field.value)]
+
+let invoice_meta_to_json meta =
+  `Assoc [
+    ("invoiceDate", invoice_date_field_to_json meta.invoice_date);
+    ("dueDate", invoice_date_field_to_json meta.due_date);
+    ("invoiceNumber", invoice_date_field_to_json meta.invoice_number);
+  ]
+
+let vat_to_json vat =
+  `Assoc [
+    ("enabled", `Bool vat.enabled);
+    ("rate", `Int vat.rate);
+  ]
+
+let line_item_to_json item =
+  `Assoc [
+    ("date", `String item.date);
+    ("description", `String item.description);
+    ("price", `String item.price);
+  ]
+
+let string_dict_to_json dict =
+  `Assoc (List.map (fun (k, v) -> (k, `String v)) dict)
+
+let nested_string_dict_to_json dict =
+  `Assoc (List.map (fun (k, v) -> (k, string_dict_to_json v)) dict)
+
+let meta_to_json meta =
+  `Assoc [
+    ("title", string_dict_to_json meta.title);
+    ("payInfo", nested_string_dict_to_json meta.pay_info);
+    ("lineHeadings", nested_string_dict_to_json meta.line_headings);
+    ("payableTo", string_dict_to_json meta.payable_to);
+  ]
+
+let invoice_to_json invoice =
+  `Assoc [
+    ("locale", `String invoice.locale);
+    ("currency", currency_to_json invoice.currency);
+    ("yourCompany", company_to_json invoice.your_company);
+    ("yourBank", bank_to_json invoice.your_bank);
+    ("invoiceMeta", invoice_meta_to_json invoice.invoice_meta);
+    ("customer", company_to_json invoice.customer);
+    ("author", `String invoice.author);
+    ("service", `String invoice.service);
+    ("lines", `List (List.map line_item_to_json invoice.lines));
+    ("pdfTitle", `String invoice.pdf_title);
+    ("vat", vat_to_json invoice.vat);
+    ("meta", meta_to_json invoice.meta);
+  ]

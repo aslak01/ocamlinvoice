@@ -59,3 +59,24 @@ type invoice_data = {
   vat : vat;
   meta : meta_strings;
 }
+
+(* Helper functions for invoice data manipulation *)
+let update_invoice_customer_and_number invoice_data new_customer new_invoice_number =
+  let updated_meta = {
+    invoice_data.invoice_meta with
+    invoice_number = { value = new_invoice_number }
+  } in
+  { invoice_data with
+    customer = new_customer;
+    invoice_meta = updated_meta;
+  }
+
+let get_customer invoice_data = invoice_data.customer
+
+let update_invoice_with_single_line invoice_data description amount =
+  let line_item = {
+    date = "";
+    description = description;
+    price = Printf.sprintf "%.2f" amount;
+  } in
+  { invoice_data with lines = [line_item] }

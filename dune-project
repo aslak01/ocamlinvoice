@@ -2,4 +2,4 @@
 
 (package
  (name invoice-generator)
- (depends ocaml dune camlpdf yojson alcotest))
+ (depends ocaml dune camlpdf yojson alcotest sqlite3))

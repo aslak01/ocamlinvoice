@@ -32,7 +32,6 @@ let add_invoice_title state invoice_data =
   let new_state = add_content_to_state state title_ops in
   move_y new_state (state.config.font_size_title +. 23.0)
 
-(* Company information blocks *)
 let add_company_info state invoice_data =
   let your_company_block = create_address_block state.config invoice_data.your_company state.config.margin state.current_y in
   let customer_x = 350.0 in
@@ -64,17 +63,19 @@ let add_invoice_metadata state invoice_data =
 (* Line items table *)
 let add_line_items_header state invoice_data =
   let line_headings = List.assoc invoice_data.locale invoice_data.meta.line_headings in
-  let date_header = List.assoc "date" line_headings in
+  (* let date_header = List.assoc "date" line_headings in *)
   let desc_header = List.assoc "description" line_headings in
   let price_header = List.assoc "price" line_headings in
   
+  (* Reserve 120 points for price column + 20 points padding *)
+  let price_column_x = state.config.width -. state.config.margin in
   let columns = [
     { x = state.config.margin; alignment = `Left };
-    { x = 150.0; alignment = `Left };
-    { x = state.config.width -. state.config.margin; alignment = `Right };
+    { x = price_column_x; alignment = `Right };
   ] in
   
-  let headers = [date_header; desc_header; price_header] in
+  (* let headers = [date_header; desc_header; price_header] in *)
+  let headers = [desc_header; price_header] in
   let header_ops = create_table_header state.config headers columns state.current_y in
   let line_y = state.current_y -. 8.0 in
   let line_ops = horizontal_line state.config.margin (state.config.width -. state.config.margin) (line_y +. 4.0) in
@@ -84,19 +85,23 @@ let add_line_items_header state invoice_data =
   move_y state2 16.0
 
 let add_line_items state invoice_data =
+  (* Reserve space for price column: 100 points for price + 20 points padding *)
+  let price_column_width = 100.0 in
+  let padding = 20.0 in
+  let price_column_x = state.config.width -. state.config.margin in
+  let max_description_width = price_column_x -. state.config.margin -. price_column_width -. padding in
+  
   let columns = [
     { x = state.config.margin; alignment = `Left };
-    { x = 150.0; alignment = `Left };
-    { x = state.config.width -. state.config.margin; alignment = `Right };
+    { x = price_column_x; alignment = `Right };
   ] in
   
   let process_line_item state line =
-    let formatted_date = format_date line.date in
     let formatted_price = format_currency (float_of_string line.price) invoice_data.currency in
-    let values = [formatted_date; line.description; formatted_price] in
-    let row_ops = create_table_row state.config values columns state.current_y in
+    let values = [line.description; formatted_price] in
+    let (row_ops, actual_height) = create_multiline_table_row state.config values columns state.current_y max_description_width in
     let new_state = add_content_to_state state row_ops in
-    move_y new_state state.config.line_height
+    move_y new_state actual_height
   in
   
   List.fold_left process_line_item state invoice_data.lines

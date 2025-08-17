@@ -23,6 +23,9 @@ val add_to_content : pdf_content -> string list -> pdf_content
 (* Text measurement *)
 val calculate_text_width : string -> float -> float
 
+(* Text wrapping *)
+val wrap_text : string -> float -> float -> string list
+
 (* Basic text operations *)
 val text_at_position : string -> float -> float -> float -> string list
 val right_aligned_text : string -> float -> float -> float -> string list
@@ -47,3 +50,4 @@ type column_config = {
 
 val create_table_header : page_config -> string list -> column_config list -> float -> string list
 val create_table_row : page_config -> string list -> column_config list -> float -> string list
+val create_multiline_table_row : page_config -> string list -> column_config list -> float -> float -> string list * float
