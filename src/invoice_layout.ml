@@ -22,9 +22,6 @@ let add_content_to_state state new_content =
 let move_y state dy =
   { state with current_y = state.current_y -. dy }
 
-(* Helper function for adding space - currently unused but kept for potential future use *)
-let _add_space state height = move_y state height
-
 (* Invoice header *)
 let add_invoice_title state invoice_data =
   let title = lookup_simple_string invoice_data.meta.title invoice_data.locale in
@@ -33,9 +30,9 @@ let add_invoice_title state invoice_data =
   move_y new_state (state.config.font_size_title +. 23.0)
 
 let add_company_info state invoice_data =
-  let your_company_block = create_address_block state.config invoice_data.your_company state.config.margin state.current_y in
+  let your_company_block = create_simple_text_block state.config invoice_data.your_company.adr state.config.margin state.current_y in
   let customer_x = 350.0 in
-  let customer_block = create_address_block state.config invoice_data.customer customer_x state.current_y in
+  let customer_block = create_simple_address_block state.config invoice_data.customer customer_x state.current_y in
   let state1 = add_content_to_state state your_company_block.content in
   let state2 = add_content_to_state state1 customer_block.content in
   move_y state2 (max your_company_block.height customer_block.height +. 25.0)
@@ -138,26 +135,19 @@ let add_totals state invoice_data =
   move_y new_state (state.config.font_size_heading +. 43.0)
 
 (* Payment information *)
-let add_payment_info state invoice_data =
-  let payable_to_label = lookup_simple_string invoice_data.meta.payable_to invoice_data.locale in
-  let payment_lines = [
-    payable_to_label;
-    Printf.sprintf "Account: %s" invoice_data.your_bank.accno;
-    Printf.sprintf "IBAN: %s" invoice_data.your_bank.iban;
-    Printf.sprintf "BIC: %s" invoice_data.your_bank.bic;
-    invoice_data.your_bank.bank;
-  ] in
+let add_payment_info state bank_lines =
+  let payable_to_label = "Betalingsdetaljer" in
   
   let title_ops = text_at_position payable_to_label state.config.margin state.current_y state.config.font_size_heading in
   let details_start_y = state.current_y -. state.config.font_size_heading -. 8.0 in
-  let details_block = create_text_block state.config (List.tl payment_lines) state.config.margin details_start_y state.config.font_size_small in
+  let details_block = create_text_block state.config bank_lines state.config.margin details_start_y state.config.font_size_small in
   
   let state1 = add_content_to_state state title_ops in
   let state2 = add_content_to_state state1 details_block.content in
   move_y state2 (state.config.font_size_heading +. details_block.height +. 8.0)
 
 (* Main layout function *)
-let generate_invoice_layout config invoice_data =
+let generate_invoice_layout config invoice_data bank_lines =
   let initial_state = create_layout_state config 750.0 in
   let state1 = add_invoice_title initial_state invoice_data in
   let state2 = add_company_info state1 invoice_data in
@@ -165,4 +155,4 @@ let generate_invoice_layout config invoice_data =
   let state4 = add_line_items_header state3 invoice_data in
   let state5 = add_line_items state4 invoice_data in
   let state6 = add_totals state5 invoice_data in
-  add_payment_info state6 invoice_data
+  add_payment_info state6 bank_lines

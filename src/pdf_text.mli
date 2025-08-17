@@ -41,6 +41,8 @@ type text_block = {
 
 val create_text_block : page_config -> string list -> float -> float -> float -> text_block
 val create_address_block : page_config -> Types.company -> float -> float -> text_block
+val create_simple_text_block : page_config -> string list -> float -> float -> text_block
+val create_simple_address_block : page_config -> Types.company -> float -> float -> text_block
 
 (* Table operations *)
 type column_config = {

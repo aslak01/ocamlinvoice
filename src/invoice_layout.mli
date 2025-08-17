@@ -12,4 +12,4 @@ type layout_state = {
 val create_layout_state : page_config -> float -> layout_state
 
 (* Main layout generation function *)
-val generate_invoice_layout : page_config -> invoice_data -> layout_state
+val generate_invoice_layout : page_config -> invoice_data -> string list -> layout_state

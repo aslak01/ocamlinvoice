@@ -80,3 +80,55 @@ let update_invoice_with_single_line invoice_data description amount =
     price = Printf.sprintf "%.2f" amount;
   } in
   { invoice_data with lines = [line_item] }
+
+(* Simplified invoice data creation from file-based inputs *)
+let create_basic_invoice_data sender_lines _bank_lines customer invoice_number description amount =
+  let today = 
+    let tm = Unix.localtime (Unix.time ()) in
+    Printf.sprintf "%04d-%02d-%02d" (1900 + tm.tm_year) (tm.tm_mon + 1) tm.tm_mday in
+  let due_date = 
+    let tm = Unix.localtime (Unix.time () +. (30.0 *. 24.0 *. 60.0 *. 60.0)) in
+    Printf.sprintf "%04d-%02d-%02d" (1900 + tm.tm_year) (tm.tm_mon + 1) tm.tm_mday in
+  
+  let sender_company = {
+    name = (match sender_lines with [] -> "Sender" | h :: _ -> h);
+    orgno = "";
+    adr = sender_lines;
+  } in
+  
+  let line_item = {
+    date = "";
+    description = description;
+    price = Printf.sprintf "%.2f" amount;
+  } in
+  
+  {
+    locale = "nb-NO";
+    currency = { name = "Norwegian Krone"; short = "NOK"; symbol = Some "kr" };
+    your_company = sender_company;
+    your_bank = { accno = ""; iban = ""; bic = ""; bank = "" };
+    invoice_meta = {
+      invoice_date = { value = today };
+      due_date = { value = due_date };
+      invoice_number = { value = invoice_number };
+    };
+    customer = customer;
+    author = "";
+    service = "";
+    lines = [line_item];
+    pdf_title = "Invoice";
+    vat = { enabled = false; rate = 0 };
+    meta = {
+      title = [("nb-NO", "FAKTURA")];
+      pay_info = [("nb-NO", [
+        ("invoiceDate", "Fakturadato:");
+        ("dueDate", "Forfallsdato:");
+        ("invoiceNumber", "Fakturanummer:");
+      ])];
+      line_headings = [("nb-NO", [
+        ("description", "Beskrivelse");
+        ("price", "Beløp");
+      ])];
+      payable_to = [("nb-NO", "Betalingsdetaljer")];
+    };
+  }

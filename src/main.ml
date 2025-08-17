@@ -1,10 +1,7 @@
 open Printf
 
-let usage_msg = "invoice-generator [-dry] <json-file>"
-let input_file = ref ""
+let usage_msg = "invoice-generator [-dry]"
 let dry_run = ref false
-
-let set_input_file filename = input_file := filename
 
 let spec_list = [
   ("-dry", Arg.Set dry_run, " Generate PDF without saving to database (preview mode)");
@@ -20,7 +17,7 @@ let ensure_output_directory () =
       Unix.mkdir out_dir 0o755
   | _ -> ()
 
-let generate_single_invoice invoice_data customer_info invoice_number_or_preview is_preview invoice_info_opt =
+let generate_single_invoice invoice_data bank_lines customer_info invoice_number_or_preview is_preview invoice_info_opt =
   let updated_with_customer = 
     Invoice_src.Types.update_invoice_customer_and_number invoice_data customer_info invoice_number_or_preview in
   
@@ -34,7 +31,7 @@ let generate_single_invoice invoice_data customer_info invoice_number_or_preview
   ensure_output_directory ();
   let output_file = Printf.sprintf "out/invoice-%s.pdf" invoice_number_or_preview in
   printf "Generating PDF: %s...\n" output_file;
-  Invoice_src.Pdf_generator.generate_invoice_pdf final_invoice_data output_file;
+  Invoice_src.Pdf_generator.generate_invoice_pdf final_invoice_data bank_lines output_file;
   printf "PDF generated successfully: %s\n" output_file;
   
   if not is_preview then (
@@ -50,7 +47,7 @@ let generate_single_invoice invoice_data customer_info invoice_number_or_preview
     (final_invoice_data, "")
   )
 
-let process_single_invoice db invoice_data customer_info invoice_info_opt =
+let process_single_invoice db invoice_data bank_lines customer_info invoice_info_opt =
   match Invoice_src.Database.generate_invoice_number db with
   | Error msg ->
       eprintf "Failed to generate invoice number: %s\n" msg;
@@ -59,7 +56,7 @@ let process_single_invoice db invoice_data customer_info invoice_info_opt =
       printf "Generated invoice number: %s\n" invoice_number;
       
       let (updated_invoice_data, pdf_content) = 
-        generate_single_invoice invoice_data customer_info invoice_number false invoice_info_opt in
+        generate_single_invoice invoice_data bank_lines customer_info invoice_number false invoice_info_opt in
       
       printf "Storing invoice in database...\n";
       match Invoice_src.Database.store_invoice db invoice_number updated_invoice_data pdf_content with
@@ -71,7 +68,7 @@ let process_single_invoice db invoice_data customer_info invoice_info_opt =
           Ok invoice_number
   )
 
-let process_recipients invoice_data recipients invoice_info_opt =
+let process_recipients invoice_data bank_lines recipients invoice_info_opt =
   printf "Connecting to database...\n";
   match Invoice_src.Database.get_or_create_connection () with
   | Error msg ->
@@ -98,7 +95,7 @@ let process_recipients invoice_data recipients invoice_info_opt =
             ()
         | recipient :: remaining_recipients ->
             printf "\n--- Processing recipient: %s ---\n" recipient.Invoice_src.Types.name;
-            match process_single_invoice db invoice_data recipient per_recipient_invoice_info with
+            match process_single_invoice db invoice_data bank_lines recipient per_recipient_invoice_info with
             | Ok invoice_number ->
                 printf "✓ Successfully generated invoice %s for %s\n" invoice_number recipient.Invoice_src.Types.name;
                 process_all (successful_count + 1) remaining_recipients
@@ -110,37 +107,46 @@ let process_recipients invoice_data recipients invoice_info_opt =
   )
 
 let () =
-  Arg.parse spec_list set_input_file usage_msg;
-  
-  if !input_file = "" then (
-    eprintf "Error: Please provide a JSON file as input\n";
-    eprintf "Usage: %s [-dry] <json-file>\n" Sys.argv.(0);
-    eprintf "Example: %s invoice-data.json\n" Sys.argv.(0);
-    eprintf "         %s -dry invoice-data.json  (preview mode)\n" Sys.argv.(0);
-    eprintf "\nRecipients: If recipients.txt exists, generates invoices for each recipient\n";
-    exit 1
-  );
+  Arg.parse spec_list (fun _ -> ()) usage_msg;
   
   try
-    printf "Reading invoice data from %s...\n" !input_file;
-    let invoice_data = Invoice_src.Json_parser.load_from_file !input_file in
-    
-    (* Check for invoice.txt file and update invoice data if present *)
+    (* Required files *)
+    let sender_file = "sender.txt" in
+    let bank_file = "bankdetails.txt" in
     let invoice_file = "invoice.txt" in
-    let (final_invoice_data, invoice_info_opt) = 
-      if Invoice_src.Invoice_parser.invoice_file_exists invoice_file then (
-        printf "Found %s - using custom invoice description and amount\n" invoice_file;
-        match Invoice_src.Invoice_parser.parse_invoice_file invoice_file with
-        | Some info ->
-            printf "Invoice description: %s\n" (if info.Invoice_src.Invoice_parser.description = "" then "(empty)" else info.Invoice_src.Invoice_parser.description);
-            printf "Total amount: %.2f NOK\n" info.Invoice_src.Invoice_parser.total_amount;
-            (invoice_data, Some info)
-        | None ->
-            eprintf "Warning: Failed to parse %s, using original invoice data\n" invoice_file;
-            (invoice_data, None)
-      ) else (
-        (invoice_data, None)
-      ) in
+    
+    (* Check required files exist *)
+    if not (Invoice_src.File_parsers.file_exists sender_file) then (
+      eprintf "Error: Required file %s not found\n" sender_file;
+      exit 1
+    );
+    
+    if not (Invoice_src.File_parsers.file_exists bank_file) then (
+      eprintf "Error: Required file %s not found\n" bank_file;
+      exit 1
+    );
+    
+    if not (Invoice_src.File_parsers.file_exists invoice_file) then (
+      eprintf "Error: Required file %s not found\n" invoice_file;
+      exit 1
+    );
+    
+    (* Parse required files *)
+    printf "Reading sender details from %s...\n" sender_file;
+    let sender_lines = Invoice_src.File_parsers.parse_text_file sender_file in
+    
+    printf "Reading bank details from %s...\n" bank_file;
+    let bank_lines = Invoice_src.File_parsers.parse_text_file bank_file in
+    
+    printf "Reading invoice details from %s...\n" invoice_file;
+    let invoice_info = match Invoice_src.Invoice_parser.parse_invoice_file invoice_file with
+      | Some info -> info
+      | None -> 
+          eprintf "Error: Failed to parse %s\n" invoice_file;
+          exit 1 in
+    
+    printf "Invoice description: %s\n" (if invoice_info.Invoice_src.Invoice_parser.description = "" then "(empty)" else invoice_info.Invoice_src.Invoice_parser.description);
+    printf "Total amount: %.2f NOK\n" invoice_info.Invoice_src.Invoice_parser.total_amount;
     
     (* Check for recipients.txt file *)
     let recipients_file = "recipients.txt" in
@@ -154,62 +160,41 @@ let () =
         exit 1
       );
       
+      (* Create basic invoice data for first recipient to get structure *)
+      let dummy_customer = List.hd recipients in
+      let base_invoice_data = Invoice_src.Types.create_basic_invoice_data 
+        sender_lines bank_lines dummy_customer "TEMP" 
+        invoice_info.Invoice_src.Invoice_parser.description 
+        invoice_info.Invoice_src.Invoice_parser.total_amount in
+      
       if !dry_run then (
         printf "DRY RUN MODE - Preview mode for batch processing\n";
         printf "Would generate %d invoices for:\n" (List.length recipients);
         
-        (* Calculate per-recipient preview info if invoice.txt is present *)
-        let per_recipient_preview_info = 
-          match invoice_info_opt with
-          | Some info ->
-              let amount_per_recipient = Invoice_src.Invoice_parser.calculate_amount_per_recipient info.Invoice_src.Invoice_parser.total_amount (List.length recipients) in
-              printf "Would divide total amount %.2f NOK equally among %d recipients: %.2f NOK each\n" 
-                info.Invoice_src.Invoice_parser.total_amount (List.length recipients) amount_per_recipient;
-              Some { Invoice_src.Invoice_parser.description = info.Invoice_src.Invoice_parser.description; total_amount = amount_per_recipient }
-          | None -> 
-              None in
+        let amount_per_recipient = Invoice_src.Invoice_parser.calculate_amount_per_recipient invoice_info.Invoice_src.Invoice_parser.total_amount (List.length recipients) in
+        printf "Would divide total amount %.2f NOK equally among %d recipients: %.2f NOK each\n" 
+          invoice_info.Invoice_src.Invoice_parser.total_amount (List.length recipients) amount_per_recipient;
+        
+        let per_recipient_info = { Invoice_src.Invoice_parser.description = invoice_info.Invoice_src.Invoice_parser.description; total_amount = amount_per_recipient } in
         
         List.iteri (fun i recipient ->
           printf "  %d. %s\n" (i + 1) recipient.Invoice_src.Types.name;
           let preview_name = Printf.sprintf "PREVIEW-%d" (i + 1) in
-          let (_, _) = generate_single_invoice final_invoice_data recipient preview_name true per_recipient_preview_info in
+          let (_, _) = generate_single_invoice base_invoice_data bank_lines recipient preview_name true (Some per_recipient_info) in
           ()
         ) recipients;
         printf "\nUse without -dry flag to generate actual invoices with database storage\n"
       ) else (
-        process_recipients final_invoice_data recipients invoice_info_opt
+        process_recipients base_invoice_data bank_lines recipients (Some invoice_info)
       )
     ) else (
-      (* Single invoice mode (original behavior) *)
-      if !dry_run then (
-        printf "DRY RUN MODE - Preview only, not saving to database\n";
-        let original_customer = Invoice_src.Types.get_customer final_invoice_data in
-        let (_, _) = generate_single_invoice final_invoice_data original_customer "PREVIEW" true invoice_info_opt in
-        printf "Use without -dry flag to generate with real invoice number and save to database\n"
-      ) else (
-        printf "Connecting to database...\n";
-        match Invoice_src.Database.get_or_create_connection () with
-        | Error msg ->
-            eprintf "Database error: %s\n" msg;
-            exit 1
-        | Ok db -> (
-            let original_customer = Invoice_src.Types.get_customer final_invoice_data in
-            match process_single_invoice db final_invoice_data original_customer invoice_info_opt with
-            | Ok _ -> 
-                let _ = Invoice_src.Database.close_connection db in
-                ()
-            | Error _ ->
-                let _ = Invoice_src.Database.close_connection db in
-                exit 1
-        )
-      )
+      eprintf "Error: No recipients.txt file found\n";
+      eprintf "Please create a recipients.txt file with recipient information\n";
+      exit 1
     )
   with
   | Sys_error msg ->
       eprintf "File error: %s\n" msg;
-      exit 1
-  | Yojson.Json_error msg ->
-      eprintf "JSON parsing error: %s\n" msg;
       exit 1
   | exn ->
       eprintf "Error: %s\n" (Printexc.to_string exn);

@@ -106,6 +106,21 @@ let create_address_block config company x y =
     height = config.font_size_heading +. config.font_size_small +. addr_block.height +. 6.0;
   }
 
+(* Simple text block for sender/recipient without special formatting *)
+let create_simple_text_block config lines x y =
+  let text_block = create_text_block config lines x y config.font_size_normal in
+  text_block
+
+(* Simple address block without org line for recipients *)
+let create_simple_address_block config company x y =
+  let name_block = text_at_position company.Types.name x y config.font_size_normal in
+  let y_start = y -. config.font_size_normal -. 3.0 in
+  let addr_block = create_text_block config company.Types.adr x y_start config.font_size_normal in
+  {
+    content = add_to_content name_block addr_block.content;
+    height = config.font_size_normal +. addr_block.height +. 3.0;
+  }
+
 (* Table-like structure for line items *)
 type column_config = {
   x : float;
