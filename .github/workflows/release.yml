@@ -7,7 +7,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4.14.x
+          dune-cache: true
+
+      - name: Install OCaml dependencies
+        run: opam install -y camlpdf yojson sqlite3 dune alcotest
+
+      - name: Run OCaml tests
+        working-directory: ./tauri-gui/ocaml-backend
+        run: |
+          eval $(opam env)
+          dune runtest
+
   release:
+    needs: test
     permissions:
       contents: write
     strategy:
@@ -41,6 +63,12 @@ jobs:
       - name: Install OCaml dependencies
         run: opam install -y camlpdf yojson sqlite3 dune
 
+      - name: Build OCaml backend
+        working-directory: ./tauri-gui/ocaml-backend
+        run: |
+          eval $(opam env)
+          dune build
+
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
 
@@ -59,12 +87,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: ./tauri-gui
         run: npm ci
-
-      - name: Build OCaml backend
-        working-directory: ./tauri-gui/ocaml-backend
-        run: |
-          eval $(opam env)
-          dune build
 
       - name: Build the app
         working-directory: ./tauri-gui

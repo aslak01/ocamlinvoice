@@ -1,0 +1,71 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4.14.x
+          dune-cache: true
+
+      - name: Install OCaml dependencies
+        run: opam install -y camlpdf yojson sqlite3 dune alcotest
+
+      - name: Run OCaml tests
+        working-directory: ./tauri-gui/ocaml-backend
+        run: |
+          eval $(opam env)
+          dune runtest
+
+      - name: Build OCaml backend
+        working-directory: ./tauri-gui/ocaml-backend
+        run: |
+          eval $(opam env)
+          dune build
+
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          cache-dependency-path: './tauri-gui/package-lock.json'
+
+      - name: Install frontend dependencies
+        working-directory: ./tauri-gui
+        run: npm ci
+
+      - name: Check JavaScript/TypeScript formatting
+        working-directory: ./tauri-gui
+        run: |
+          # Add any linting commands here when available
+          echo "No linting configured yet"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check Rust formatting
+        working-directory: ./tauri-gui/src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Run Rust linting
+        working-directory: ./tauri-gui/src-tauri
+        run: cargo clippy -- -D warnings
