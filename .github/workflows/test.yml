@@ -9,9 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,7 +17,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4.14.x
-          dune-cache: true
+          dune-cache: false
 
       - name: Install OCaml dependencies
         run: opam install -y camlpdf yojson sqlite3 dune alcotest
@@ -39,8 +36,6 @@ jobs:
 
   lint:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
