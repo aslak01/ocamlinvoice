@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "Invoice Generator",
   "version": "0.1.0",
-  "identifier": "com.t991563.tauri-app",
+  "identifier": "com.invoicegen.desktop",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,9 +10,12 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "Invoice Generator",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true
       }
     ],
     "security": {
@@ -28,6 +31,24 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Invoice Generator",
+    "copyright": "Copyright (c) 2025 Invoice Generator",
+    "category": "Productivity",
+    "shortDescription": "Professional invoice generator with PDF creation",
+    "longDescription": "A cross-platform desktop application for generating professional invoices with OCaml backend processing and SQLite database storage. Features include batch processing, invoice history, and PDF preview.",
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
   }
 }
