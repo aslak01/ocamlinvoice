@@ -55,6 +55,11 @@ jobs:
         working-directory: ./tauri-gui
         run: npm run tauri build -- ${{ matrix.args }}
 
+      - name: Ad-hoc sign macOS app (free)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          find tauri-gui/src-tauri/target/release/bundle -name "*.app" -exec codesign --force --deep --sign - {} \;
+
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v1
         with:

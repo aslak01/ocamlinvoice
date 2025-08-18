@@ -87,6 +87,18 @@ tauri-gui/
 └── README.md              # This file
 ```
 
+## Installation
+
+Download the latest release for your platform from the [Releases page](https://github.com/username/ocaml-invoice/releases).
+
+### macOS Users
+If you see a security warning, right-click the app and select "Open", then click "Open" again. This only needs to be done once.
+
+### Windows Users  
+If Windows SmartScreen blocks the installer, click "More info" then "Run anyway".
+
+See [INSTALLATION.md](../INSTALLATION.md) for detailed instructions.
+
 ## Configuration
 
 The app automatically detects and connects to the OCaml invoice generator in the parent directory. It reads and writes configuration files in the `../config/` directory.
