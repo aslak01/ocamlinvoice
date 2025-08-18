@@ -1,9 +1,9 @@
+use base64::{engine::general_purpose, Engine as _};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use rusqlite::Connection;
-use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Serialize, Deserialize)]
 struct FileData {
@@ -48,36 +48,40 @@ fn connect_database() -> Result<Connection, String> {
 #[tauri::command]
 fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
     let conn = connect_database()?;
-    
-    let mut stmt = conn.prepare(
-        "SELECT id, invoice_number, service, invoice_date, due_date, 
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, invoice_number, service, invoice_date, due_date, 
                 vat_enabled, vat_rate, created_at, pdf_content 
          FROM invoices 
-         ORDER BY created_at DESC"
-    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
-    
-    let invoice_iter = stmt.query_map([], |row| {
-        let pdf_content: Vec<u8> = row.get(8)?;
-        let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
-        
-        Ok(InvoiceRecord {
-            id: row.get(0)?,
-            invoice_number: row.get(1)?,
-            service: row.get(2)?,
-            invoice_date: row.get(3)?,
-            due_date: row.get(4)?,
-            vat_enabled: row.get::<_, i32>(5)? != 0,
-            vat_rate: row.get(6)?,
-            created_at: row.get(7)?,
-            pdf_base64,
+         ORDER BY created_at DESC",
+        )
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let invoice_iter = stmt
+        .query_map([], |row| {
+            let pdf_content: Vec<u8> = row.get(8)?;
+            let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
+
+            Ok(InvoiceRecord {
+                id: row.get(0)?,
+                invoice_number: row.get(1)?,
+                service: row.get(2)?,
+                invoice_date: row.get(3)?,
+                due_date: row.get(4)?,
+                vat_enabled: row.get::<_, i32>(5)? != 0,
+                vat_rate: row.get(6)?,
+                created_at: row.get(7)?,
+                pdf_base64,
+            })
         })
-    }).map_err(|e| format!("Failed to execute query: {}", e))?;
-    
+        .map_err(|e| format!("Failed to execute query: {}", e))?;
+
     let mut invoices = Vec::new();
     for invoice in invoice_iter {
         invoices.push(invoice.map_err(|e| format!("Failed to parse row: {}", e))?);
     }
-    
+
     Ok(invoices)
 }
 
@@ -85,31 +89,35 @@ fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
 #[tauri::command]
 fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
     let conn = connect_database()?;
-    
-    let mut stmt = conn.prepare(
-        "SELECT id, invoice_number, service, invoice_date, due_date, 
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, invoice_number, service, invoice_date, due_date, 
                 vat_enabled, vat_rate, created_at, pdf_content 
          FROM invoices 
-         WHERE id = ?"
-    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
-    
-    let invoice = stmt.query_row([id], |row| {
-        let pdf_content: Vec<u8> = row.get(8)?;
-        let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
-        
-        Ok(InvoiceRecord {
-            id: row.get(0)?,
-            invoice_number: row.get(1)?,
-            service: row.get(2)?,
-            invoice_date: row.get(3)?,
-            due_date: row.get(4)?,
-            vat_enabled: row.get::<_, i32>(5)? != 0,
-            vat_rate: row.get(6)?,
-            created_at: row.get(7)?,
-            pdf_base64,
+         WHERE id = ?",
+        )
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let invoice = stmt
+        .query_row([id], |row| {
+            let pdf_content: Vec<u8> = row.get(8)?;
+            let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
+
+            Ok(InvoiceRecord {
+                id: row.get(0)?,
+                invoice_number: row.get(1)?,
+                service: row.get(2)?,
+                invoice_date: row.get(3)?,
+                due_date: row.get(4)?,
+                vat_enabled: row.get::<_, i32>(5)? != 0,
+                vat_rate: row.get(6)?,
+                created_at: row.get(7)?,
+                pdf_base64,
+            })
         })
-    }).map_err(|e| format!("Failed to get invoice: {}", e))?;
-    
+        .map_err(|e| format!("Failed to get invoice: {}", e))?;
+
     Ok(invoice)
 }
 
@@ -125,13 +133,12 @@ fn read_file(file_path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_file(file_path: String, content: String) -> Result<(), String> {
     let config_path = get_config_path(&file_path);
-    
+
     // Ensure the config directory exists
     if let Some(parent) = Path::new(&config_path).parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory: {}", e))?;
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
-    
+
     fs::write(&config_path, content)
         .map_err(|e| format!("Failed to write file {}: {}", config_path, e))
 }
@@ -157,9 +164,9 @@ fn save_invoice_details(description: String, amount: String) -> Result<(), Strin
 }
 
 fn get_tauri_app_path() -> Result<std::path::PathBuf, String> {
-    let current_dir = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?;
-    
+    let current_dir =
+        std::env::current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
+
     // Check if we're in src-tauri subdirectory
     if current_dir.file_name() == Some("src-tauri".as_ref()) {
         // We're in src-tauri, go up one level to tauri-gui
@@ -181,7 +188,7 @@ fn get_tauri_app_path() -> Result<std::path::PathBuf, String> {
 fn get_ocaml_backend_path() -> Result<std::path::PathBuf, String> {
     let tauri_app = get_tauri_app_path()?;
     let ocaml_backend = tauri_app.join("ocaml-backend");
-    
+
     if ocaml_backend.exists() {
         Ok(ocaml_backend)
     } else {
@@ -192,22 +199,23 @@ fn get_ocaml_backend_path() -> Result<std::path::PathBuf, String> {
 // Run invoice generation
 #[tauri::command]
 fn generate_invoices(dry_run: bool) -> Result<String, String> {
-    let ocaml_backend = get_ocaml_backend_path()
-        .map_err(|e| format!("Failed to find OCaml backend: {}", e))?;
-    
+    let ocaml_backend =
+        get_ocaml_backend_path().map_err(|e| format!("Failed to find OCaml backend: {}", e))?;
+
     let mut cmd = Command::new("dune");
     cmd.current_dir(&ocaml_backend);
     cmd.arg("exec");
     cmd.arg("src/main.exe");
-    
+
     if dry_run {
         cmd.arg("--");
         cmd.arg("-dry");
     }
-    
-    let output = cmd.output()
+
+    let output = cmd
+        .output()
         .map_err(|e| format!("Failed to execute command: {}", e))?;
-    
+
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
@@ -216,8 +224,9 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 }
 
 fn get_config_path(filename: &str) -> String {
-    let ocaml_backend = get_ocaml_backend_path().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    
+    let ocaml_backend =
+        get_ocaml_backend_path().unwrap_or_else(|_| std::env::current_dir().unwrap());
+
     ocaml_backend
         .join("config")
         .join(filename)
