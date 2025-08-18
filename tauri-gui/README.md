@@ -83,6 +83,12 @@ tauri-gui/
 │   ├── icons/             # Application icons
 │   ├── Cargo.toml         # Rust dependencies
 │   └── tauri.conf.json    # Tauri configuration
+├── ocaml-backend/         # OCaml invoice generation backend
+│   ├── src/               # OCaml source code
+│   ├── config/            # Configuration files
+│   ├── examples/          # Example data
+│   ├── tests/             # Test suite
+│   └── dune-project       # OCaml build configuration
 ├── package.json           # Node.js dependencies
 └── README.md              # This file
 ```
@@ -101,7 +107,7 @@ See [INSTALLATION.md](../INSTALLATION.md) for detailed instructions.
 
 ## Configuration
 
-The app automatically detects and connects to the OCaml invoice generator in the parent directory. It reads and writes configuration files in the `../config/` directory.
+The app includes a bundled OCaml invoice generator backend in the `ocaml-backend/` directory. It reads and writes configuration files in the `ocaml-backend/config/` directory.
 
 ## Recommended IDE Setup
 

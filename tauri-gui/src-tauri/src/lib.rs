@@ -35,8 +35,8 @@ struct InvoiceRecord {
 
 // Database functions
 fn get_database_path() -> Result<std::path::PathBuf, String> {
-    let project_root = get_project_root()?;
-    Ok(project_root.join("invoices.db"))
+    let ocaml_backend = get_ocaml_backend_path()?;
+    Ok(ocaml_backend.join("invoices.db"))
 }
 
 fn connect_database() -> Result<Connection, String> {
@@ -156,46 +156,47 @@ fn save_invoice_details(description: String, amount: String) -> Result<(), Strin
     Ok(())
 }
 
-fn get_project_root() -> Result<std::path::PathBuf, String> {
+fn get_tauri_app_path() -> Result<std::path::PathBuf, String> {
     let current_dir = std::env::current_dir()
         .map_err(|e| format!("Failed to get current directory: {}", e))?;
     
     // Check if we're in src-tauri subdirectory
     if current_dir.file_name() == Some("src-tauri".as_ref()) {
-        // We're in src-tauri, go up two levels (src-tauri -> tauri-gui -> project root)
-        let tauri_gui = current_dir.parent().unwrap();
-        let project_root = tauri_gui.parent().unwrap().to_path_buf();
-        Ok(project_root)
+        // We're in src-tauri, go up one level to tauri-gui
+        Ok(current_dir.parent().unwrap().to_path_buf())
     } else if current_dir.file_name() == Some("tauri-gui".as_ref()) {
-        // We're in tauri-gui, go to parent
-        let parent = current_dir.parent().unwrap().to_path_buf();
-        Ok(parent)
+        // We're already in tauri-gui
+        Ok(current_dir)
     } else {
-        // Check if config directory exists in current directory
-        let config_in_current = current_dir.join("config");
-        if config_in_current.exists() {
-            Ok(current_dir)
+        // Check if we can find tauri-gui directory
+        let tauri_gui_path = current_dir.join("tauri-gui");
+        if tauri_gui_path.exists() {
+            Ok(tauri_gui_path)
         } else {
-            // Look for config directory in parent
-            let parent = current_dir.parent().unwrap_or(&current_dir);
-            let config_in_parent = parent.join("config");
-            if config_in_parent.exists() {
-                Ok(parent.to_path_buf())
-            } else {
-                Err("Could not find config directory".to_string())
-            }
+            Err("Could not find tauri-gui directory".to_string())
         }
+    }
+}
+
+fn get_ocaml_backend_path() -> Result<std::path::PathBuf, String> {
+    let tauri_app = get_tauri_app_path()?;
+    let ocaml_backend = tauri_app.join("ocaml-backend");
+    
+    if ocaml_backend.exists() {
+        Ok(ocaml_backend)
+    } else {
+        Err("Could not find ocaml-backend directory".to_string())
     }
 }
 
 // Run invoice generation
 #[tauri::command]
 fn generate_invoices(dry_run: bool) -> Result<String, String> {
-    let project_root = get_project_root()
-        .map_err(|e| format!("Failed to find project root: {}", e))?;
+    let ocaml_backend = get_ocaml_backend_path()
+        .map_err(|e| format!("Failed to find OCaml backend: {}", e))?;
     
     let mut cmd = Command::new("dune");
-    cmd.current_dir(&project_root);
+    cmd.current_dir(&ocaml_backend);
     cmd.arg("exec");
     cmd.arg("src/main.exe");
     
@@ -215,9 +216,9 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 }
 
 fn get_config_path(filename: &str) -> String {
-    let project_root = get_project_root().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    let ocaml_backend = get_ocaml_backend_path().unwrap_or_else(|_| std::env::current_dir().unwrap());
     
-    project_root
+    ocaml_backend
         .join("config")
         .join(filename)
         .to_string_lossy()

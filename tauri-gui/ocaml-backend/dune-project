@@ -1,0 +1,5 @@
+(lang dune 3.0)
+
+(package
+ (name invoice-generator-backend)
+ (depends ocaml dune camlpdf yojson alcotest sqlite3))

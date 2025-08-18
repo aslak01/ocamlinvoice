@@ -1,0 +1,11 @@
+(library
+ (public_name invoice-generator-backend.src)
+ (name invoice_src)
+ (libraries camlpdf yojson sqlite3 unix str)
+ (modules types formatting_utils pdf_text invoice_layout pdf_document pdf_generator database recipients_parser invoice_parser file_parsers))
+
+(executable
+ (public_name invoice-generator-backend)
+ (name main)
+ (libraries invoice_src)
+ (modules main))

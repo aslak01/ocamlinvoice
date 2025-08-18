@@ -32,6 +32,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4.14.x
+          dune-cache: true
+
+      - name: Install OCaml dependencies
+        run: opam install -y camlpdf yojson sqlite3 dune
+
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
 
@@ -50,6 +59,12 @@ jobs:
       - name: Install frontend dependencies
         working-directory: ./tauri-gui
         run: npm ci
+
+      - name: Build OCaml backend
+        working-directory: ./tauri-gui/ocaml-backend
+        run: |
+          eval $(opam env)
+          dune build
 
       - name: Build the app
         working-directory: ./tauri-gui
