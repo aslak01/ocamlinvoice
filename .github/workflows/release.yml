@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   test:
@@ -35,12 +35,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: ''
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'windows-latest'
-            args: ''
+          - platform: "macos-latest"
+            args: ""
+          - platform: "ubuntu-latest"
+            args: ""
+          - platform: "windows-latest"
+            args: ""
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -60,7 +60,7 @@ jobs:
           dune-cache: true
 
       - name: Install OCaml dependencies
-        run: opam install -y camlpdf yojson sqlite3 dune
+        run: opam install -y camlpdf yojson sqlite3 dune alcotest
 
       - name: Build OCaml backend
         working-directory: ./tauri-gui/ocaml-backend
@@ -74,14 +74,14 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './tauri-gui/src-tauri -> target'
+          workspaces: "./tauri-gui/src-tauri -> target"
 
       - name: Sync node version and setup cache
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: './tauri-gui/package-lock.json'
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: "./tauri-gui/package-lock.json"
 
       - name: Install frontend dependencies
         working-directory: ./tauri-gui

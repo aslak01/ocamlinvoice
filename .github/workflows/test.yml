@@ -32,7 +32,7 @@ jobs:
         working-directory: ./tauri-gui/ocaml-backend
         run: |
           eval $(opam env)
-          dune build src/
+          dune build
 
   lint:
     runs-on: ubuntu-22.04
