@@ -49,7 +49,7 @@ This will create platform-specific bundles in `src-tauri/target/release/bundle/`
 
 Releases are automatically built for all platforms when a tag is pushed:
 
-- **macOS**: `.dmg` installer (Universal binary for Intel/Apple Silicon)
+- **macOS**: `.dmg` installer (Apple Silicon on GitHub Actions, Intel via Rosetta)
 - **Linux**: `.deb` package and `.AppImage`
 - **Windows**: `.msi` installer and `.exe` (NSIS)
 
