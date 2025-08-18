@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -61,6 +61,8 @@ jobs:
 
       - name: Install OCaml dependencies
         run: opam install -y camlpdf yojson sqlite3 dune alcotest
+        env:
+          CC: gcc
 
       - name: Build OCaml backend
         working-directory: ./tauri-gui/ocaml-backend
