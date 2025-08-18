@@ -66,6 +66,9 @@ function loadTabContent(tabName) {
     // Load both description and amount for invoice tab
     document.getElementById('description-editor').value = fileData.description || '';
     document.getElementById('amount-editor').value = fileData.amount || '';
+  } else if (tabName === 'history') {
+    // Load invoice history
+    loadInvoiceHistory();
   } else {
     // Load single content for other tabs
     const editorId = `${tabName}-editor`;
@@ -157,3 +160,140 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Load initial data
   await loadAllFiles();
 });
+
+// Invoice History Functions
+async function loadInvoiceHistory() {
+  try {
+    showHistoryLoading(true);
+    const invoices = await invoke('get_all_invoices');
+    displayInvoices(invoices);
+  } catch (error) {
+    showHistoryError(`Error loading invoices: ${error}`);
+  }
+}
+
+function showHistoryLoading(show) {
+  document.getElementById('invoices-loading').classList.toggle('hidden', !show);
+  document.getElementById('invoices-table').classList.toggle('hidden', show);
+  document.getElementById('invoices-empty').classList.add('hidden');
+  document.getElementById('invoices-error').classList.add('hidden');
+}
+
+function showHistoryError(message) {
+  document.getElementById('invoices-loading').classList.add('hidden');
+  document.getElementById('invoices-table').classList.add('hidden');
+  document.getElementById('invoices-empty').classList.add('hidden');
+  document.getElementById('invoices-error').classList.remove('hidden');
+  document.getElementById('invoices-error').textContent = message;
+}
+
+function displayInvoices(invoices) {
+  showHistoryLoading(false);
+  
+  if (invoices.length === 0) {
+    document.getElementById('invoices-table').classList.add('hidden');
+    document.getElementById('invoices-empty').classList.remove('hidden');
+    return;
+  }
+  
+  const tbody = document.getElementById('invoices-tbody');
+  tbody.innerHTML = '';
+  
+  invoices.forEach(invoice => {
+    const row = document.createElement('tr');
+    row.dataset.invoiceId = invoice.id;
+    
+    row.innerHTML = `
+      <td><span class="invoice-number">${invoice.invoice_number}</span></td>
+      <td>${invoice.service}</td>
+      <td>${formatDate(invoice.invoice_date)}</td>
+      <td>${formatDate(invoice.due_date)}</td>
+      <td>${formatDate(invoice.created_at)}</td>
+      <td>
+        <button class="action-btn" onclick="previewInvoice(${invoice.id})">Preview</button>
+        <button class="action-btn" onclick="downloadInvoice(${invoice.id}, '${invoice.invoice_number}')">Download</button>
+      </td>
+    `;
+    
+    row.addEventListener('click', () => previewInvoice(invoice.id));
+    tbody.appendChild(row);
+  });
+  
+  document.getElementById('invoices-table').classList.remove('hidden');
+}
+
+async function previewInvoice(invoiceId) {
+  try {
+    // Remove previous selection
+    document.querySelectorAll('#invoices-tbody tr').forEach(tr => {
+      tr.classList.remove('selected');
+    });
+    
+    // Add selection to clicked row
+    const row = document.querySelector(`tr[data-invoice-id="${invoiceId}"]`);
+    if (row) {
+      row.classList.add('selected');
+    }
+    
+    const invoice = await invoke('get_invoice_by_id', { id: invoiceId });
+    
+    // Show PDF in iframe
+    const pdfFrame = document.getElementById('pdf-frame');
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pdfPlaceholder = document.getElementById('pdf-placeholder');
+    
+    // Convert base64 to blob URL
+    const pdfBlob = base64ToBlob(invoice.pdf_base64, 'application/pdf');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    
+    pdfFrame.src = pdfUrl;
+    pdfViewer.classList.remove('hidden');
+    pdfPlaceholder.classList.add('hidden');
+    
+  } catch (error) {
+    showStatus(`Error loading invoice: ${error}`, 'error');
+  }
+}
+
+async function downloadInvoice(invoiceId, invoiceNumber) {
+  try {
+    const invoice = await invoke('get_invoice_by_id', { id: invoiceId });
+    
+    // Convert base64 to blob and download
+    const pdfBlob = base64ToBlob(invoice.pdf_base64, 'application/pdf');
+    const url = URL.createObjectURL(pdfBlob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${invoiceNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showStatus(`Invoice ${invoiceNumber} downloaded successfully!`, 'success');
+  } catch (error) {
+    showStatus(`Error downloading invoice: ${error}`, 'error');
+  }
+}
+
+// Helper functions
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}

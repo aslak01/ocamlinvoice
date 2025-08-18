@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use rusqlite::Connection;
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Serialize, Deserialize)]
 struct FileData {
@@ -16,6 +18,99 @@ struct InvoiceFiles {
     description: String,
     amount: String,
     recipients: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct InvoiceRecord {
+    id: i32,
+    invoice_number: String,
+    service: String,
+    invoice_date: String,
+    due_date: String,
+    vat_enabled: bool,
+    vat_rate: i32,
+    created_at: String,
+    pdf_base64: String,
+}
+
+// Database functions
+fn get_database_path() -> Result<std::path::PathBuf, String> {
+    let project_root = get_project_root()?;
+    Ok(project_root.join("invoices.db"))
+}
+
+fn connect_database() -> Result<Connection, String> {
+    let db_path = get_database_path()?;
+    Connection::open(db_path).map_err(|e| format!("Failed to open database: {}", e))
+}
+
+// Get all invoices from database
+#[tauri::command]
+fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
+    let conn = connect_database()?;
+    
+    let mut stmt = conn.prepare(
+        "SELECT id, invoice_number, service, invoice_date, due_date, 
+                vat_enabled, vat_rate, created_at, pdf_content 
+         FROM invoices 
+         ORDER BY created_at DESC"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+    
+    let invoice_iter = stmt.query_map([], |row| {
+        let pdf_content: Vec<u8> = row.get(8)?;
+        let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
+        
+        Ok(InvoiceRecord {
+            id: row.get(0)?,
+            invoice_number: row.get(1)?,
+            service: row.get(2)?,
+            invoice_date: row.get(3)?,
+            due_date: row.get(4)?,
+            vat_enabled: row.get::<_, i32>(5)? != 0,
+            vat_rate: row.get(6)?,
+            created_at: row.get(7)?,
+            pdf_base64,
+        })
+    }).map_err(|e| format!("Failed to execute query: {}", e))?;
+    
+    let mut invoices = Vec::new();
+    for invoice in invoice_iter {
+        invoices.push(invoice.map_err(|e| format!("Failed to parse row: {}", e))?);
+    }
+    
+    Ok(invoices)
+}
+
+// Get a specific invoice by ID
+#[tauri::command]
+fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
+    let conn = connect_database()?;
+    
+    let mut stmt = conn.prepare(
+        "SELECT id, invoice_number, service, invoice_date, due_date, 
+                vat_enabled, vat_rate, created_at, pdf_content 
+         FROM invoices 
+         WHERE id = ?"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+    
+    let invoice = stmt.query_row([id], |row| {
+        let pdf_content: Vec<u8> = row.get(8)?;
+        let pdf_base64 = general_purpose::STANDARD.encode(&pdf_content);
+        
+        Ok(InvoiceRecord {
+            id: row.get(0)?,
+            invoice_number: row.get(1)?,
+            service: row.get(2)?,
+            invoice_date: row.get(3)?,
+            due_date: row.get(4)?,
+            vat_enabled: row.get::<_, i32>(5)? != 0,
+            vat_rate: row.get(6)?,
+            created_at: row.get(7)?,
+            pdf_base64,
+        })
+    }).map_err(|e| format!("Failed to get invoice: {}", e))?;
+    
+    Ok(invoice)
 }
 
 // Read a single file
@@ -138,7 +233,9 @@ pub fn run() {
             write_file,
             read_all_files,
             save_invoice_details,
-            generate_invoices
+            generate_invoices,
+            get_all_invoices,
+            get_invoice_by_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

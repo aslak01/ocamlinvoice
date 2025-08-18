@@ -17,6 +17,7 @@
         <button class="tab" data-tab="bankdetails">Bank Details</button>
         <button class="tab" data-tab="invoice">Invoice Details</button>
         <button class="tab" data-tab="recipients">Recipients</button>
+        <button class="tab" data-tab="history">Invoice History</button>
       </div>
       
       <div class="tab-content">
@@ -48,6 +49,43 @@
         <div id="recipients-tab" class="tab-panel">
           <h3>Recipients</h3>
           <textarea id="recipients-editor" placeholder="Enter recipients here..."></textarea>
+        </div>
+        
+        <!-- Invoice History tab -->
+        <div id="history-tab" class="tab-panel">
+          <h3>Invoice History</h3>
+          <div class="history-container">
+            <div class="invoices-list">
+              <div id="invoices-loading" class="loading">Loading invoices...</div>
+              <div id="invoices-empty" class="empty hidden">No invoices found</div>
+              <div id="invoices-error" class="error hidden"></div>
+              <div id="invoices-table" class="hidden">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Invoice #</th>
+                      <th>Service</th>
+                      <th>Date</th>
+                      <th>Due Date</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="invoices-tbody">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="pdf-preview">
+              <div id="pdf-viewer" class="pdf-viewer hidden">
+                <h4>PDF Preview</h4>
+                <iframe id="pdf-frame" src="" width="100%" height="600px"></iframe>
+              </div>
+              <div id="pdf-placeholder" class="pdf-placeholder">
+                Select an invoice to preview PDF
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       

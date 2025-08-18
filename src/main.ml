@@ -220,14 +220,6 @@ let run_cli_mode dry_run =
       exit 1
 
 let () =
-  (* Check if any command line arguments were provided *)
-  let has_args = Array.length Sys.argv > 1 in
-  
-  if has_args then (
-    (* CLI mode - parse arguments and run *)
-    Arg.parse spec_list (fun _ -> ()) usage_msg;
-    run_cli_mode !dry_run
-  ) else (
-    (* No arguments - show web GUI *)
-    Invoice_src.Gui.show_config_editor ()
-  )
+  (* Always run in CLI mode - parse arguments and run *)
+  Arg.parse spec_list (fun _ -> ()) usage_msg;
+  run_cli_mode !dry_run
