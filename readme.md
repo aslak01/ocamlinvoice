@@ -69,11 +69,12 @@ The recommended development workflow is:
 2. **Test OCaml Changes**: `cd tauri-gui/ocaml-backend && dune exec src/main.exe`
 3. **Run Tests**: `cd tauri-gui/ocaml-backend && dune runtest`
 
-## Legacy Files
+## Clean Architecture
 
-The root directory contains legacy files from the original CLI-only version:
-- `src/`, `tests/`, `config/`, `examples/` - **Deprecated**
-- All development now happens in `tauri-gui/`
+This project now has a clean, focused structure:
+- All active development happens in `tauri-gui/`
+- OCaml backend is self-contained within `tauri-gui/ocaml-backend/`
+- No legacy files remain in the root directory
 
 ## License
 
