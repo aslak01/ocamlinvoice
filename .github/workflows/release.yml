@@ -59,13 +59,27 @@ jobs:
           ocaml-compiler: 4.14.x
           dune-cache: true
 
-      - name: Install OCaml dependencies (with retry)
+      - name: Install OCaml dependencies (Unix)
+        if: runner.os != 'Windows'
         run: |
           for i in {1..3}; do
             opam install -y camlpdf yojson sqlite3 dune alcotest && break
             echo "Attempt $i failed, retrying..."
             sleep 10
           done
+        env:
+          CC: gcc
+
+      - name: Install OCaml dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          for ($i = 1; $i -le 3; $i++) {
+            opam install -y camlpdf yojson sqlite3 dune alcotest
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "Attempt $i failed, retrying..."
+            Start-Sleep -Seconds 10
+          }
+        shell: pwsh
         env:
           CC: gcc
 
