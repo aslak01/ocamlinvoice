@@ -8,6 +8,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -15,8 +17,8 @@ jobs:
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.x
-          dune-cache: true
+          ocaml-compiler: 5.2.x
+          dune-cache: false
 
       - name: Install OCaml dependencies
         run: opam install -y camlpdf yojson sqlite3 dune alcotest
@@ -56,8 +58,8 @@ jobs:
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.x
-          dune-cache: true
+          ocaml-compiler: 5.2.x
+          dune-cache: false
 
       - name: Install OCaml dependencies (Unix)
         if: runner.os != 'Windows'
@@ -73,6 +75,10 @@ jobs:
       - name: Install OCaml dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
+          # Set up environment to avoid async handle issues
+          $env:DUNE_CACHE_STORAGE_MODE = "disabled"
+          $env:DUNE_CACHE_TRANSPORT = "disabled"
+          
           for ($i = 1; $i -le 3; $i++) {
             opam install -y camlpdf yojson sqlite3 dune alcotest
             if ($LASTEXITCODE -eq 0) { break }
@@ -94,6 +100,10 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: ./tauri-gui/ocaml-backend
         run: |
+          # Disable dune cache to avoid async handle issues on Windows
+          $env:DUNE_CACHE_STORAGE_MODE = "disabled"
+          $env:DUNE_CACHE_TRANSPORT = "disabled"
+          
           opam env | Invoke-Expression
           dune build
         shell: pwsh
@@ -140,3 +150,15 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup (Windows)
+        if: runner.os == 'Windows' && always()
+        run: |
+          # Force cleanup to prevent UV_HANDLE_CLOSING assertion
+          Write-Host "Performing cleanup..."
+          if (Get-Process "dune" -ErrorAction SilentlyContinue) { 
+            Stop-Process -Name "dune" -Force -ErrorAction SilentlyContinue
+          }
+          # Give time for processes to properly close
+          Start-Sleep -Seconds 2
+        shell: pwsh
