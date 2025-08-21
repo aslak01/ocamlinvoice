@@ -3,6 +3,7 @@ const { invoke } = window.__TAURI__.core;
 // UI Elements
 let currentTab = 'sender';
 let fileData = {};
+let appSettings = {};
 
 // Status management
 function showStatus(message, type = 'info') {
@@ -69,6 +70,9 @@ function loadTabContent(tabName) {
   } else if (tabName === 'history') {
     // Load invoice history
     loadInvoiceHistory();
+  } else if (tabName === 'settings') {
+    // Load settings
+    loadSettings();
   } else {
     // Load single content for other tabs
     const editorId = `${tabName}-editor`;
@@ -156,6 +160,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('save-btn').addEventListener('click', saveAllFiles);
   document.getElementById('generate-btn').addEventListener('click', () => generateInvoices(false));
   document.getElementById('preview-btn').addEventListener('click', () => generateInvoices(true));
+  
+  // Settings button events
+  document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+  document.getElementById('reset-settings-btn').addEventListener('click', resetSettings);
+  document.getElementById('choose-output-btn').addEventListener('click', chooseOutputDirectory);
+  document.getElementById('choose-config-btn').addEventListener('click', chooseConfigDirectory);
+  document.getElementById('open-output-btn').addEventListener('click', () => {
+    const dir = document.getElementById('output-directory').value;
+    if (dir) openDirectory(dir);
+  });
+  document.getElementById('open-config-btn').addEventListener('click', () => {
+    const dir = document.getElementById('config-directory').value;
+    if (dir) openDirectory(dir);
+  });
   
   // Load initial data
   await loadAllFiles();
@@ -296,4 +314,104 @@ function base64ToBlob(base64, mimeType) {
   }
   const byteArray = new Uint8Array(byteNumbers);
   return new Blob([byteArray], { type: mimeType });
+}
+
+// Settings Management Functions
+async function loadSettings() {
+  try {
+    appSettings = await invoke('get_app_settings');
+    displaySettings();
+  } catch (error) {
+    showStatus(`Error loading settings: ${error}`, 'error');
+  }
+}
+
+function displaySettings() {
+  document.getElementById('output-directory').value = appSettings.output_directory || '';
+  document.getElementById('config-directory').value = appSettings.config_directory || '';
+}
+
+async function saveSettings() {
+  try {
+    showStatus('Saving settings...', 'info');
+    
+    const newSettings = {
+      output_directory: document.getElementById('output-directory').value,
+      config_directory: document.getElementById('config-directory').value
+    };
+    
+    await invoke('save_app_settings', { settings: newSettings });
+    appSettings = newSettings;
+    
+    showStatus('Settings saved successfully!', 'success');
+  } catch (error) {
+    showStatus(`Error saving settings: ${error}`, 'error');
+  }
+}
+
+async function resetSettings() {
+  try {
+    if (confirm('Are you sure you want to reset all settings to default? This will change your output and config directories.')) {
+      showStatus('Resetting settings...', 'info');
+      
+      // Get default settings by creating new ones
+      const defaultSettings = {
+        output_directory: '',
+        config_directory: ''
+      };
+      
+      // The backend will create defaults if empty values are provided
+      await invoke('save_app_settings', { settings: defaultSettings });
+      
+      // Reload settings to get the actual defaults
+      await loadSettings();
+      
+      showStatus('Settings reset to default!', 'success');
+    }
+  } catch (error) {
+    showStatus(`Error resetting settings: ${error}`, 'error');
+  }
+}
+
+async function chooseOutputDirectory() {
+  try {
+    const directory = await window.__TAURI__.dialog.open({
+      directory: true,
+      multiple: false,
+      title: 'Choose Output Directory for Invoice PDFs'
+    });
+    
+    if (directory) {
+      document.getElementById('output-directory').value = directory;
+      showStatus('Output directory selected. Remember to save settings.', 'info');
+    }
+  } catch (error) {
+    showStatus(`Error choosing directory: ${error}`, 'error');
+  }
+}
+
+async function chooseConfigDirectory() {
+  try {
+    const directory = await window.__TAURI__.dialog.open({
+      directory: true,
+      multiple: false,
+      title: 'Choose Configuration Directory'
+    });
+    
+    if (directory) {
+      document.getElementById('config-directory').value = directory;
+      showStatus('Config directory selected. Remember to save settings.', 'info');
+    }
+  } catch (error) {
+    showStatus(`Error choosing directory: ${error}`, 'error');
+  }
+}
+
+async function openDirectory(directoryPath) {
+  try {
+    // Use Tauri's shell plugin to open directory
+    await window.__TAURI__.shell.open(directoryPath);
+  } catch (error) {
+    showStatus(`Error opening directory: ${error}`, 'error');
+  }
 }

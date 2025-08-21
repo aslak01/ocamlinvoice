@@ -18,6 +18,7 @@
         <button class="tab" data-tab="invoice">Invoice Details</button>
         <button class="tab" data-tab="recipients">Recipients</button>
         <button class="tab" data-tab="history">Invoice History</button>
+        <button class="tab" data-tab="settings">⚙️ Settings</button>
       </div>
       
       <div class="tab-content">
@@ -84,6 +85,55 @@
               <div id="pdf-placeholder" class="pdf-placeholder">
                 Select an invoice to preview PDF
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings tab -->
+        <div id="settings-tab" class="tab-panel">
+          <h3>Application Settings</h3>
+          <div class="settings-container">
+            <div class="setting-group">
+              <h4>📁 Output Directory</h4>
+              <p>Directory where generated invoice PDFs will be saved</p>
+              <div class="directory-setting">
+                <input type="text" id="output-directory" readonly placeholder="Loading...">
+                <button id="choose-output-btn" class="directory-btn">📂 Choose</button>
+                <button id="open-output-btn" class="directory-btn">🔗 Open</button>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>⚙️ Configuration Directory</h4>
+              <p>Directory where configuration files (sender, bank details, etc.) are stored</p>
+              <div class="directory-setting">
+                <input type="text" id="config-directory" readonly placeholder="Loading...">
+                <button id="choose-config-btn" class="directory-btn">📂 Choose</button>
+                <button id="open-config-btn" class="directory-btn">🔗 Open</button>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <h4>ℹ️ Application Info</h4>
+              <div class="info-grid">
+                <div class="info-item">
+                  <strong>Default Output Location:</strong>
+                  <span>Documents/InvoiceGenerator</span>
+                </div>
+                <div class="info-item">
+                  <strong>Database Location:</strong>
+                  <span>Application Data/InvoiceGenerator</span>
+                </div>
+                <div class="info-item">
+                  <strong>Cross-Platform:</strong>
+                  <span>macOS, Linux, Windows</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-actions">
+              <button id="save-settings-btn" class="save-btn">💾 Save Settings</button>
+              <button id="reset-settings-btn" class="reset-btn">🔄 Reset to Default</button>
             </div>
           </div>
         </div>

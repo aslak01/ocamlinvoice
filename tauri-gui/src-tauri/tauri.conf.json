@@ -37,6 +37,9 @@
     "category": "Productivity",
     "shortDescription": "Professional invoice generator with PDF creation",
     "longDescription": "A cross-platform desktop application for generating professional invoices with OCaml backend processing and SQLite database storage. Features include batch processing, invoice history, and PDF preview.",
+    "resources": {
+      "../ocaml-backend/**/*": "./"
+    },
     "linux": {
       "deb": {
         "depends": []

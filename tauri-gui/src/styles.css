@@ -98,6 +98,120 @@ textarea {
   line-height: 1.4;
 }
 
+/* Settings tab styles */
+.settings-container {
+  max-width: 800px;
+}
+
+.setting-group {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.setting-group h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.setting-group p {
+  margin: 0 0 15px 0;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.directory-setting {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.directory-setting input[type="text"] {
+  flex: 1;
+  padding: 10px 15px;
+  border: 2px solid #bdc3c7;
+  border-radius: 6px;
+  background: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.directory-btn {
+  padding: 10px 15px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.directory-btn:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.info-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-item strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.info-item span {
+  color: #6c757d;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.setting-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-start;
+  margin-top: 30px;
+}
+
+.reset-btn {
+  padding: 12px 25px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.reset-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(231,76,60,0.3);
+}
+
 textarea:focus {
   outline: none;
   border-color: #3498db;
