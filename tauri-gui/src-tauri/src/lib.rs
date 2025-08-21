@@ -45,11 +45,11 @@ fn get_app_data_dir() -> Result<PathBuf, String> {
     let app_data = dirs::data_dir()
         .ok_or("Could not determine data directory")?
         .join("InvoiceGenerator");
-    
+
     // Ensure the directory exists
     fs::create_dir_all(&app_data)
         .map_err(|e| format!("Failed to create app data directory: {}", e))?;
-    
+
     Ok(app_data)
 }
 
@@ -57,21 +57,21 @@ fn get_default_output_dir() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .ok_or("Could not determine documents directory")?
         .join("InvoiceGenerator");
-    
+
     // Ensure the directory exists
     fs::create_dir_all(&documents)
         .map_err(|e| format!("Failed to create documents directory: {}", e))?;
-    
+
     Ok(documents)
 }
 
 fn get_config_dir() -> Result<PathBuf, String> {
     let config_dir = get_app_data_dir()?.join("config");
-    
+
     // Ensure the directory exists
     fs::create_dir_all(&config_dir)
         .map_err(|e| format!("Failed to create config directory: {}", e))?;
-    
+
     Ok(config_dir)
 }
 
@@ -84,23 +84,22 @@ fn get_settings_path() -> Result<PathBuf, String> {
 #[tauri::command]
 fn get_app_settings() -> Result<AppSettings, String> {
     let settings_path = get_settings_path()?;
-    
+
     if settings_path.exists() {
         let content = fs::read_to_string(&settings_path)
             .map_err(|e| format!("Failed to read settings: {}", e))?;
-        
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse settings: {}", e))
+
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse settings: {}", e))
     } else {
         // Create default settings
         let default_output = get_default_output_dir()?;
         let default_config = get_config_dir()?;
-        
+
         let settings = AppSettings {
             output_directory: default_output.to_string_lossy().to_string(),
             config_directory: default_config.to_string_lossy().to_string(),
         };
-        
+
         // Save default settings
         save_app_settings(settings.clone())?;
         Ok(settings)
@@ -110,22 +109,20 @@ fn get_app_settings() -> Result<AppSettings, String> {
 #[tauri::command]
 fn save_app_settings(settings: AppSettings) -> Result<(), String> {
     let settings_path = get_settings_path()?;
-    
+
     // Ensure output directory exists
     fs::create_dir_all(&settings.output_directory)
         .map_err(|e| format!("Failed to create output directory: {}", e))?;
-    
+
     // Ensure config directory exists
     fs::create_dir_all(&settings.config_directory)
         .map_err(|e| format!("Failed to create config directory: {}", e))?;
-    
+
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
-    
-    fs::write(settings_path, content)
-        .map_err(|e| format!("Failed to save settings: {}", e))
-}
 
+    fs::write(settings_path, content).map_err(|e| format!("Failed to save settings: {}", e))
+}
 
 // Database functions
 fn get_database_path() -> Result<PathBuf, String> {
@@ -220,7 +217,7 @@ fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
 fn read_file(file_path: String) -> Result<String, String> {
     let settings = get_app_settings()?;
     let config_path = Path::new(&settings.config_directory).join(&file_path);
-    
+
     if config_path.exists() {
         fs::read_to_string(&config_path)
             .map_err(|e| format!("Failed to read file {}: {}", config_path.display(), e))
@@ -267,12 +264,13 @@ fn save_invoice_details(description: String, amount: String) -> Result<(), Strin
 // Get the bundled OCaml backend path
 fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
     // In development, look for the ocaml-backend directory
-    let current_exe = std::env::current_exe()
-        .map_err(|e| format!("Failed to get current executable: {}", e))?;
-    
-    let exe_dir = current_exe.parent()
+    let current_exe =
+        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?;
+
+    let exe_dir = current_exe
+        .parent()
         .ok_or("Failed to get executable directory")?;
-    
+
     // Try different possible locations
     let possible_paths = [
         // Development mode (when running from tauri-gui/src-tauri)
@@ -284,15 +282,19 @@ fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
         // macOS app bundle
         exe_dir.join("../Resources/ocaml-backend"),
     ];
-    
+
     for path in possible_paths {
         if path.exists() && path.join("src").exists() {
-            return Ok(path.canonicalize()
+            return Ok(path
+                .canonicalize()
                 .map_err(|e| format!("Failed to canonicalize path: {}", e))?);
         }
     }
-    
-    Err("Could not find OCaml backend directory. Make sure the application is properly installed.".to_string())
+
+    Err(
+        "Could not find OCaml backend directory. Make sure the application is properly installed."
+            .to_string(),
+    )
 }
 
 // Copy config files to OCaml backend working directory
@@ -300,18 +302,24 @@ fn setup_ocaml_environment() -> Result<PathBuf, String> {
     let settings = get_app_settings()?;
     let ocaml_backend = get_bundled_ocaml_backend()?;
     let ocaml_config = ocaml_backend.join("config");
-    
+
     // Ensure OCaml config directory exists
     fs::create_dir_all(&ocaml_config)
         .map_err(|e| format!("Failed to create OCaml config directory: {}", e))?;
-    
+
     // Copy config files from user config to OCaml config
-    let config_files = ["sender.txt", "bankdetails.txt", "description.txt", "amount.txt", "recipients.txt"];
-    
+    let config_files = [
+        "sender.txt",
+        "bankdetails.txt",
+        "description.txt",
+        "amount.txt",
+        "recipients.txt",
+    ];
+
     for file in config_files {
         let user_config_path = Path::new(&settings.config_directory).join(file);
         let ocaml_config_path = ocaml_config.join(file);
-        
+
         if user_config_path.exists() {
             fs::copy(&user_config_path, &ocaml_config_path)
                 .map_err(|e| format!("Failed to copy {} to OCaml config: {}", file, e))?;
@@ -321,7 +329,7 @@ fn setup_ocaml_environment() -> Result<PathBuf, String> {
                 .map_err(|e| format!("Failed to create empty {} in OCaml config: {}", file, e))?;
         }
     }
-    
+
     Ok(ocaml_backend)
 }
 
@@ -330,36 +338,37 @@ fn copy_generated_pdfs(ocaml_backend: &Path) -> Result<Vec<String>, String> {
     let settings = get_app_settings()?;
     let ocaml_out = ocaml_backend.join("out");
     let user_output = Path::new(&settings.output_directory);
-    
+
     if !ocaml_out.exists() {
         return Ok(Vec::new());
     }
-    
+
     let mut copied_files = Vec::new();
-    
+
     // Read the out directory and copy all PDF files
     let entries = fs::read_dir(&ocaml_out)
         .map_err(|e| format!("Failed to read OCaml out directory: {}", e))?;
-    
+
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let path = entry.path();
-        
+
         if path.extension().and_then(|s| s.to_str()) == Some("pdf") {
-            let filename = path.file_name()
+            let filename = path
+                .file_name()
                 .ok_or("Failed to get filename")?
                 .to_str()
                 .ok_or("Invalid filename")?;
-            
+
             let target_path = user_output.join(filename);
-            
+
             fs::copy(&path, &target_path)
                 .map_err(|e| format!("Failed to copy {} to output directory: {}", filename, e))?;
-            
+
             copied_files.push(filename.to_string());
         }
     }
-    
+
     Ok(copied_files)
 }
 
@@ -368,20 +377,23 @@ fn copy_generated_pdfs(ocaml_backend: &Path) -> Result<Vec<String>, String> {
 fn generate_invoices(dry_run: bool) -> Result<String, String> {
     // Setup OCaml environment and copy config files
     let ocaml_backend = setup_ocaml_environment()?;
-    
+
     // Build the OCaml project first
     let mut build_cmd = Command::new("dune");
     build_cmd.current_dir(&ocaml_backend);
     build_cmd.arg("build");
-    
+
     let build_output = build_cmd
         .output()
         .map_err(|e| format!("Failed to execute dune build: {}", e))?;
-    
+
     if !build_output.status.success() {
-        return Err(format!("Dune build failed: {}", String::from_utf8_lossy(&build_output.stderr)));
+        return Err(format!(
+            "Dune build failed: {}",
+            String::from_utf8_lossy(&build_output.stderr)
+        ));
     }
-    
+
     // Run the invoice generation
     let mut cmd = Command::new("dune");
     cmd.current_dir(&ocaml_backend);
@@ -399,10 +411,10 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        
+
         // Copy generated PDFs to user output directory
         let copied_files = copy_generated_pdfs(&ocaml_backend)?;
-        
+
         let mut result = stdout;
         if !copied_files.is_empty() {
             result.push_str(&format!("\n\nGenerated PDFs copied to output directory:\n"));
@@ -410,7 +422,7 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
                 result.push_str(&format!("- {}\n", file));
             }
         }
-        
+
         Ok(result)
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
