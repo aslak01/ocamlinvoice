@@ -32,6 +32,8 @@ dune exec src/main.exe -- -dry
 
 Download the latest desktop application from the [Releases page](https://github.com/username/ocaml-invoice/releases).
 
+See [installation guide](./INSTALLATION.md) for info on how to make the binary run on your system.
+
 ### For Developers
 
 1. **Prerequisites**: OCaml, Dune, Node.js, Rust

@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -25,13 +25,13 @@ jobs:
         run: opam install -y camlpdf yojson sqlite3 dune alcotest
 
       - name: Run OCaml tests
-        working-directory: ./tauri-gui/ocaml-backend
+        working-directory: ./ocaml-backend
         run: |
           eval $(opam env)
           dune runtest
 
       - name: Build OCaml backend
-        working-directory: ./tauri-gui/ocaml-backend
+        working-directory: ./ocaml-backend
         run: |
           eval $(opam env)
           dune build
@@ -47,16 +47,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: './tauri-gui/package-lock.json'
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: "./package-lock.json"
 
       - name: Install frontend dependencies
-        working-directory: ./tauri-gui
+        working-directory: .
         run: npm ci
 
       - name: Check JavaScript/TypeScript formatting
-        working-directory: ./tauri-gui
+        working-directory: .
         run: |
           # Add any linting commands here when available
           echo "No linting configured yet"
@@ -72,9 +72,10 @@ jobs:
           components: rustfmt, clippy
 
       - name: Check Rust formatting
-        working-directory: ./tauri-gui/src-tauri
+        working-directory: ./src-tauri
         run: cargo fmt --all -- --check
 
       - name: Run Rust linting
-        working-directory: ./tauri-gui/src-tauri
+        working-directory: ./src-tauri
         run: cargo clippy -- -D warnings
+

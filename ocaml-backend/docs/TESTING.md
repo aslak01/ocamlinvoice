@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document describes the testing strategy and implementation for the OCaml invoice generator.
+This document describes the testing strategy and implementation for the OCaml invoice splitter.
 
 ## Test Structure
 
@@ -106,4 +106,3 @@ dune runtest
 - Boundary conditions (empty strings, zero values)
 - Invalid input handling
 - Expected exception scenarios
-

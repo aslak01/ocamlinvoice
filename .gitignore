@@ -36,3 +36,5 @@ setup.log
 _opam/
 
 out/
+
+.DS_Store

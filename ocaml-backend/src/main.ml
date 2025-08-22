@@ -1,6 +1,6 @@
 open Printf
 
-let usage_msg = "invoice-generator [-dry]"
+let usage_msg = "invoice-splitter [-dry]"
 let dry_run = ref false
 
 let spec_list = [
