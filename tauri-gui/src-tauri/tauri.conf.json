@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Invoice Generator",
+  "productName": "InvoiceSplitter",
   "version": "0.1.0",
-  "identifier": "com.invoicegen.desktop",
+  "identifier": "com.splitter.desktop",
   "build": {
     "frontendDist": "../src"
   },
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Invoice Generator",
+        "title": "InvoiceSplitter",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -32,11 +32,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "publisher": "Invoice Generator",
-    "copyright": "Copyright (c) 2025 Invoice Generator",
+    "publisher": "Aslak",
+    "copyright": "",
     "category": "Productivity",
-    "shortDescription": "Professional invoice generator with PDF creation",
-    "longDescription": "A cross-platform desktop application for generating professional invoices with OCaml backend processing and SQLite database storage. Features include batch processing, invoice history, and PDF preview.",
+    "shortDescription": "Splits invoices",
+    "longDescription": "A cross-platform desktop application for splitting invoices with OCaml backend processing and SQLite database storage. Features include batch processing, invoice history, and PDF preview.",
     "resources": {
       "../ocaml-backend/**/*": "./"
     },

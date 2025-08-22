@@ -9,39 +9,47 @@ The project uses [Alcotest](https://github.com/mirage/alcotest) as the testing f
 ### Test Organization
 
 **`test_basic.ml`** - Core functionality tests covering:
+
 - Number formatting (Norwegian conventions)
-- VAT calculations  
+- VAT calculations
 - Text escaping for PDF generation
 - PDF text width calculations
 
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 dune runtest
 ```
 
 ### Build and Test
+
 ```bash
 dune build
 dune runtest
 ```
 
 ### Test Output
+
 Tests produce colored output showing:
+
 - ✓ `[OK]` - Passing tests
 - ✗ `[FAIL]` - Failed tests with detailed diff output
 
 ## Test Categories
 
 ### Unit Tests
+
 - **Formatting Functions**: Number, currency, and date formatting
 - **PDF Text Operations**: Text width calculation and positioning
 - **VAT Calculations**: Tax computation with enabled/disabled scenarios
 - **Text Escaping**: PDF string safety and Norwegian character handling
 
 ### Integration Testing Approach
+
 While not currently implemented due to module dependency complexity, integration tests would cover:
+
 - JSON parsing with real invoice files
 - Complete PDF generation pipeline
 - Error handling and edge cases
@@ -50,13 +58,15 @@ While not currently implemented due to module dependency complexity, integration
 ## Test Data
 
 The project includes test invoice files that can be used for manual testing:
+
 - `example-invoice.json` - Standard invoice with VAT
-- `test-formatting.json` - Large numbers and formatting edge cases  
+- `test-formatting.json` - Large numbers and formatting edge cases
 - `test-unicode.json` - Norwegian characters (æ, ø, å)
 
 ## Adding New Tests
 
 1. **Add test functions** to `test_basic.ml`:
+
 ```ocaml
 let test_new_feature () =
   let result = Module.function_to_test input in
@@ -64,6 +74,7 @@ let test_new_feature () =
 ```
 
 2. **Register tests** in the test suite:
+
 ```ocaml
 ("Test Category", [
   test_case "test_name" `Quick test_new_feature;
@@ -71,6 +82,7 @@ let test_new_feature () =
 ```
 
 3. **Run tests**:
+
 ```bash
 dune runtest
 ```
@@ -78,57 +90,20 @@ dune runtest
 ## Test Design Principles
 
 ### Functional Testing
+
 - Tests focus on pure functions without side effects
 - Input/output verification rather than implementation details
 - Immutable test data to prevent test interaction
 
-### Modular Testing  
+### Modular Testing
+
 - Each module tested independently where possible
 - Clear separation between unit and integration concerns
 - Minimal test dependencies
 
 ### Error Coverage
+
 - Boundary conditions (empty strings, zero values)
 - Invalid input handling
 - Expected exception scenarios
 
-## Continuous Integration
-
-For GitHub Actions, add this workflow:
-
-```yaml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: ocaml/setup-ocaml@v2
-      with:
-        ocaml-compiler: 4.14.x
-    - run: opam install . --deps-only
-    - run: dune build
-    - run: dune runtest
-```
-
-## Manual Testing
-
-For end-to-end verification:
-
-```bash
-# Test basic functionality
-dune exec ./main.exe example-invoice.json
-
-# Test formatting edge cases  
-dune exec ./main.exe test-formatting.json
-
-# Test Unicode support
-dune exec ./main.exe test-unicode.json
-```
-
-This generates PDF files that can be manually inspected for:
-- Correct formatting and alignment
-- Norwegian character rendering
-- VAT calculations
-- Professional layout quality

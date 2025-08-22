@@ -44,7 +44,7 @@ struct AppSettings {
 fn get_app_data_dir() -> Result<PathBuf, String> {
     let app_data = dirs::data_dir()
         .ok_or("Could not determine data directory")?
-        .join("InvoiceGenerator");
+        .join("InvoiceSplitter");
 
     // Ensure the directory exists
     fs::create_dir_all(&app_data)
@@ -56,7 +56,7 @@ fn get_app_data_dir() -> Result<PathBuf, String> {
 fn get_default_output_dir() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .ok_or("Could not determine documents directory")?
-        .join("InvoiceGenerator");
+        .join("InvoiceSplitter");
 
     // Ensure the directory exists
     fs::create_dir_all(&documents)

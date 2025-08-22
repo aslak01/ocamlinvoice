@@ -1,5 +1,5 @@
 [package]
-name = "invoice-generator"
+name = "invoice-splitter"
 version = "0.1.0"
 description = "A cross-platform desktop invoice generator"
 authors = ["invoices"]
