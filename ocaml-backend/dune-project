@@ -2,4 +2,4 @@
 
 (package
  (name invoice-generator-backend)
- (depends ocaml dune camlpdf yojson alcotest sqlite3))
+ (depends ocaml dune camlpdf alcotest sqlite3))

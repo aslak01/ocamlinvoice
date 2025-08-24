@@ -1,7 +1,6 @@
 type invoice_record = {
   id: int;
   invoice_number: string;
-  invoice_data_json: string;
   pdf_content: string;
   created_at: string;
 }

@@ -14,7 +14,7 @@ npm run tauri dev
 ```bash
 cd ocaml-backend
 dune build
-dune exec src/main.exe -- -dry examples/example-invoice.json
+dune exec src/main.exe -- -dry
 ```
 
 ## 📁 Project Structure

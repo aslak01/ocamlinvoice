@@ -34,7 +34,7 @@ struct InvoiceRecord {
     pdf_base64: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct AppSettings {
     output_directory: String,
     config_directory: String,
@@ -132,7 +132,31 @@ fn get_database_path() -> Result<PathBuf, String> {
 
 fn connect_database() -> Result<Connection, String> {
     let db_path = get_database_path()?;
-    Connection::open(db_path).map_err(|e| format!("Failed to open database: {}", e))
+    let conn = Connection::open(db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    
+    // Initialize the database schema
+    init_database(&conn)?;
+    
+    Ok(conn)
+}
+
+fn init_database(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_number TEXT NOT NULL,
+            service TEXT NOT NULL,
+            invoice_date TEXT NOT NULL,
+            due_date TEXT NOT NULL,
+            vat_enabled INTEGER NOT NULL,
+            vat_rate INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            pdf_content BLOB NOT NULL
+        )",
+        [],
+    ).map_err(|e| format!("Failed to create invoices table: {}", e))?;
+    
+    Ok(())
 }
 
 // Get all invoices from database
@@ -263,7 +287,6 @@ fn save_invoice_details(description: String, amount: String) -> Result<(), Strin
 
 // Get the bundled OCaml backend path
 fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
-    // In development, look for the ocaml-backend directory
     let current_exe =
         std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?;
 
@@ -273,14 +296,17 @@ fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
 
     // Try different possible locations
     let possible_paths = [
-        // Development mode (when running from tauri-gui/src-tauri)
-        exe_dir.join("../../../ocaml-backend"),
-        exe_dir.join("../../ocaml-backend"),
+        // Development mode (from project root/src-tauri)
         exe_dir.join("../ocaml-backend"),
+        exe_dir.join("../../ocaml-backend"),
         // Production mode (bundled)
         exe_dir.join("ocaml-backend"),
-        // macOS app bundle
+        // macOS app bundle - the actual path based on bundle structure
+        exe_dir.join("../Resources/_up_/ocaml-backend"),
+        // Alternative macOS app bundle paths
         exe_dir.join("../Resources/ocaml-backend"),
+        // Linux/Windows production paths
+        exe_dir.join("../ocaml-backend"),
     ];
 
     for path in possible_paths {

@@ -26,7 +26,7 @@
 opam install . --deps-only
 
 # Or manually install required packages
-opam install camlpdf yojson sqlite3 dune alcotest
+opam install camlpdf sqlite3 dune alcotest
 ```
 
 ### Basic Usage
@@ -36,10 +36,10 @@ opam install camlpdf yojson sqlite3 dune alcotest
 dune build
 
 # Generate invoice with database storage (production mode)
-dune exec ./src/main.exe examples/example-invoice.json
+dune exec ./src/main.exe
 
 # Preview mode - no database changes
-dune exec ./src/main.exe -- -dry examples/example-invoice.json
+dune exec ./src/main.exe -- -dry
 
 # Run tests
 dune runtest
@@ -69,13 +69,18 @@ ocaml-backend/
 │   ├── test_basic.ml             # Core functionality tests
 │   └── dune                      # Test configuration
 ├── config/                       # Configuration files
-│   ├── sender.txt                # Company information
+│   ├── sender.txt                # Your company information
+│   ├── customer.txt              # Customer information (or use recipients.txt for batch)
 │   ├── bankdetails.txt           # Payment details
-│   ├── recipients.txt            # Batch processing recipients
-│   ├── invoice.txt               # Custom amount override
-│   ├── description.txt           # Invoice description
-│   └── amount.txt                # Invoice amount
-├── examples/                     # Sample data
+│   ├── currency.txt              # Currency settings
+│   ├── locale.txt                # Locale setting (e.g., nb-NO)
+│   ├── dates.txt                 # Invoice and due dates
+│   ├── vat.txt                   # VAT settings (enabled, rate)
+│   ├── metadata.txt              # Author, service, PDF title
+│   ├── description.txt           # Invoice description (optional override)
+│   ├── amount.txt                # Invoice amount (optional override)
+│   ├── invoice.txt               # Combined description + amount (optional)
+│   └── recipients.txt            # Batch processing recipients (optional)
 ├── out/                          # Generated PDF files
 ├── docs/                         # Documentation
 ├── dune-project                  # Project configuration
@@ -87,7 +92,7 @@ ocaml-backend/
 ### 🏭 Production Mode (Default)
 
 ```bash
-dune exec ./src/main.exe examples/example-invoice.json
+dune exec ./src/main.exe
 ```
 
 - Generates unique invoice number (e.g., `2025-3`)
@@ -99,7 +104,7 @@ dune exec ./src/main.exe examples/example-invoice.json
 ### 🔍 Preview Mode
 
 ```bash
-dune exec ./src/main.exe -- -dry examples/example-invoice.json
+dune exec ./src/main.exe -- -dry
 ```
 
 - Generates PDF file: `out/invoice-PREVIEW.pdf`
@@ -135,11 +140,11 @@ City, State 67890
 
 ```bash
 # Batch preview mode
-dune exec ./src/main.exe -- -dry examples/example-invoice.json
+dune exec ./src/main.exe -- -dry
 # → Creates: out/invoice-PREVIEW-1.pdf, out/invoice-PREVIEW-2.pdf, etc.
 
 # Batch production mode
-dune exec ./src/main.exe examples/example-invoice.json
+dune exec ./src/main.exe
 # → Creates: out/invoice-2025-6.pdf, out/invoice-2025-7.pdf, etc.
 ```
 
@@ -248,7 +253,6 @@ dune exec ./tests/test_basic.exe
 ## 🔧 Dependencies
 
 - **`camlpdf`**: PDF manipulation library with precise text metrics
-- **`yojson`**: JSON parsing and manipulation
 - **`sqlite3`**: SQLite database interface for OCaml
 - **`unix`**: System interface for date/time operations
 - **`dune`**: Build system with modular compilation
@@ -279,35 +283,66 @@ BIC/SWIFT: BANKNO22
 Bank Name: Your Bank
 ```
 
-### Example JSON Input
+### customer.txt
 
-```json
-{
-  "locale": "nb-NO",
-  "currency": { "name": "Norwegian Krone", "short": "NOK", "symbol": "kr" },
-  "yourCompany": {
-    "name": "Your Company AS",
-    "orgno": "123456789",
-    "address": "Your Address\nCity, Country"
-  },
-  "customer": {
-    "name": "Customer Name",
-    "orgno": "987654321",
-    "address": "Customer Address\nCity, Country"
-  },
-  "invoiceDate": "2025-01-15",
-  "dueDate": "2025-02-14",
-  "lineItems": [
-    {
-      "date": "2025-01-15",
-      "description": "Consulting services",
-      "price": "2500,00"
-    }
-  ],
-  "vatEnabled": true,
-  "vatRate": 25
-}
+Customer information (when not using batch mode):
+
 ```
+Customer Company AS
+987654321
+Customer Address 123
+0987 Customer City
+```
+
+### currency.txt
+
+Currency settings:
+
+```
+Norwegian Krone
+NOK
+kr
+```
+(First line: full name, Second line: short code, Third line: symbol)
+
+### dates.txt
+
+Invoice and due dates:
+
+```
+2025-01-22
+2025-02-21
+```
+(First line: invoice date, Second line: due date - both in YYYY-MM-DD format)
+
+### vat.txt
+
+VAT configuration:
+
+```
+true
+25
+```
+(First line: VAT enabled (true/false), Second line: VAT rate as percentage)
+
+### locale.txt
+
+Locale setting:
+
+```
+nb-NO
+```
+
+### metadata.txt
+
+Invoice metadata:
+
+```
+Your Name
+Your Service Description
+Invoice PDF Title
+```
+(First line: author, Second line: service description, Third line: PDF title)
 
 ## 🔧 Troubleshooting
 
@@ -317,7 +352,7 @@ Bank Name: Your Bank
 # Issue: Missing dependencies
 Error: Unbound module Sqlite3
 # Solution: Install dependencies
-opam install sqlite3 yojson camlpdf
+opam install sqlite3 camlpdf
 
 # Issue: Database permission error
 Error: Failed to open database
@@ -326,8 +361,8 @@ rm invoices.db  # Let it recreate with proper permissions
 
 # Issue: UTF-8 encoding problems
 Error: Invalid character in PDF text
-# Solution: Check JSON input encoding
-file -I examples/example-invoice.json  # Should be utf-8
+# Solution: Check config file encoding
+file -I config/*.txt  # Should be utf-8
 ```
 
 ### Debug Mode
@@ -362,4 +397,3 @@ MIT License - see LICENSE file for details.
 6. Submit a pull request
 
 This OCaml backend can be used independently of the GUI frontend and provides a complete command-line invoice generation solution with professional PDF output and robust database storage.
-
