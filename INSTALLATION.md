@@ -36,7 +36,7 @@ xattr -d com.apple.quarantine "/Applications/InvoiceSplitter.app"
 
 ```bash
 # Download the .deb file, then:
-sudo dpkg -i invoice-generator_X.X.X_amd64.deb
+sudo dpkg -i invoice-splitter_X.X.X_amd64.deb
 
 # If there are dependency issues:
 sudo apt-get install -f
@@ -46,8 +46,8 @@ sudo apt-get install -f
 
 ```bash
 # Download the .AppImage file, then:
-chmod +x Invoice_Generator_X.X.X_amd64.AppImage
-./Invoice_Generator_X.X.X_amd64.AppImage
+chmod +x InvoiceSplitter_X.X.X_amd64.AppImage
+./InvoiceSplitter_X.X.X_amd64.AppImage
 ```
 
 ## Windows Installation

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    invoice_generator_lib::run()
+    invoice_splitter_lib::run()
 }

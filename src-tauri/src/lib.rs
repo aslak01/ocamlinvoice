@@ -7,12 +7,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Serialize, Deserialize)]
-struct FileData {
-    content: String,
-    amount: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
 struct InvoiceFiles {
     sender: String,
     bankdetails: String,
@@ -37,7 +31,6 @@ struct InvoiceRecord {
 #[derive(Serialize, Deserialize, Clone)]
 struct AppSettings {
     output_directory: String,
-    config_directory: String,
 }
 
 // Directory management functions
@@ -65,16 +58,6 @@ fn get_default_output_dir() -> Result<PathBuf, String> {
     Ok(documents)
 }
 
-fn get_config_dir() -> Result<PathBuf, String> {
-    let config_dir = get_app_data_dir()?.join("config");
-
-    // Ensure the directory exists
-    fs::create_dir_all(&config_dir)
-        .map_err(|e| format!("Failed to create config directory: {}", e))?;
-
-    Ok(config_dir)
-}
-
 fn get_settings_path() -> Result<PathBuf, String> {
     let app_data = get_app_data_dir()?;
     Ok(app_data.join("settings.json"))
@@ -93,11 +76,9 @@ fn get_app_settings() -> Result<AppSettings, String> {
     } else {
         // Create default settings
         let default_output = get_default_output_dir()?;
-        let default_config = get_config_dir()?;
 
         let settings = AppSettings {
             output_directory: default_output.to_string_lossy().to_string(),
-            config_directory: default_config.to_string_lossy().to_string(),
         };
 
         // Save default settings
@@ -114,10 +95,6 @@ fn save_app_settings(settings: AppSettings) -> Result<(), String> {
     fs::create_dir_all(&settings.output_directory)
         .map_err(|e| format!("Failed to create output directory: {}", e))?;
 
-    // Ensure config directory exists
-    fs::create_dir_all(&settings.config_directory)
-        .map_err(|e| format!("Failed to create config directory: {}", e))?;
-
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
 
@@ -126,6 +103,7 @@ fn save_app_settings(settings: AppSettings) -> Result<(), String> {
 
 // Database functions
 fn get_database_path() -> Result<PathBuf, String> {
+    // Always use a consistent location in app data for shared access
     let app_data = get_app_data_dir()?;
     Ok(app_data.join("invoices.db"))
 }
@@ -141,20 +119,31 @@ fn connect_database() -> Result<Connection, String> {
 }
 
 fn init_database(conn: &Connection) -> Result<(), String> {
+    // Only create the settings table - let OCaml backend handle its own tables
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS invoices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            invoice_number TEXT NOT NULL,
-            service TEXT NOT NULL,
-            invoice_date TEXT NOT NULL,
-            due_date TEXT NOT NULL,
-            vat_enabled INTEGER NOT NULL,
-            vat_rate INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            pdf_content BLOB NOT NULL
+        "CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )",
         [],
-    ).map_err(|e| format!("Failed to create invoices table: {}", e))?;
+    ).map_err(|e| format!("Failed to create settings table: {}", e))?;
+    
+    // Initialize example settings for first-time users
+    let examples = [
+        ("sender", "Your Company Name\nYour Address\nCity, Postal Code\nCountry"),
+        ("bankdetails", "Bank Name: Your Bank\nAccount: 1234-56-78901\nIBAN: NO1234567890123456\nBIC: BANKNO22"),
+        ("description", "Consulting services\nWeb development\nProject management"),
+        ("amount", "5000.00"),
+        ("recipients", "Client Company\nclient@example.com\nClient Address\nCity, Postal Code\n\nAnother Client\nanother@example.com\nAnother Address\nCity, Postal Code"),
+        ("_app_initialized", "true"),
+    ];
+    
+    for (key, example_value) in examples {
+        conn.execute(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
+            [key, example_value],
+        ).map_err(|e| format!("Failed to insert example setting {}: {}", key, e))?;
+    }
     
     Ok(())
 }
@@ -164,6 +153,35 @@ fn init_database(conn: &Connection) -> Result<(), String> {
 fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
     let conn = connect_database()?;
 
+    // First check if the invoices table exists and has been properly initialized by OCaml backend
+    let table_exists = conn
+        .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='invoices'")
+        .and_then(|mut stmt| stmt.query_row([], |row| row.get::<_, i32>(0)))
+        .unwrap_or(0) > 0;
+        
+    if !table_exists {
+        // No invoices table yet - return empty list
+        return Ok(Vec::new());
+    }
+    
+    // Check if table has the expected schema
+    let has_locale = conn
+        .prepare("PRAGMA table_info(invoices)")
+        .and_then(|mut stmt| {
+            let rows = stmt.query_map([], |row| {
+                Ok(row.get::<_, String>(1)?) // column name
+            })?;
+            let columns: Vec<String> = rows.collect::<Result<Vec<_>, _>>()?;
+            Ok(columns.contains(&"locale".to_string()))
+        })
+        .unwrap_or(false);
+        
+    if !has_locale {
+        // Table exists but doesn't have expected schema - return empty list
+        return Ok(Vec::new());
+    }
+
+    // Use the OCaml database schema
     let mut stmt = conn
         .prepare(
             "SELECT id, invoice_number, service, invoice_date, due_date, 
@@ -184,7 +202,7 @@ fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
                 service: row.get(2)?,
                 invoice_date: row.get(3)?,
                 due_date: row.get(4)?,
-                vat_enabled: row.get::<_, i32>(5)? != 0,
+                vat_enabled: row.get::<_, bool>(5)?, // OCaml uses BOOLEAN not INTEGER
                 vat_rate: row.get(6)?,
                 created_at: row.get(7)?,
                 pdf_base64,
@@ -200,10 +218,65 @@ fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
     Ok(invoices)
 }
 
+// Settings management functions
+fn get_setting(key: &str) -> Result<Option<String>, String> {
+    let conn = connect_database()?;
+    
+    let mut stmt = conn
+        .prepare("SELECT value FROM settings WHERE key = ?")
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+    
+    match stmt.query_row([key], |row| Ok(row.get::<_, String>(0)?)) {
+        Ok(value) => Ok(Some(value)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("Failed to get setting: {}", e)),
+    }
+}
+
+fn set_setting(key: &str, value: &str) -> Result<(), String> {
+    let conn = connect_database()?;
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+        [key, value],
+    ).map_err(|e| format!("Failed to set setting: {}", e))?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn get_config_setting(key: String) -> Result<String, String> {
+    get_setting(&key).map(|opt| opt.unwrap_or_default())
+}
+
+#[tauri::command]
+fn set_config_setting(key: String, value: String) -> Result<(), String> {
+    set_setting(&key, &value)
+}
+
+#[tauri::command]
+fn is_first_run() -> Result<bool, String> {
+    match get_setting("_app_initialized") {
+        Ok(Some(_)) => Ok(false), // App has been initialized
+        Ok(None) => Ok(true),     // First run
+        Err(e) => Err(e),
+    }
+}
+
 // Get a specific invoice by ID
 #[tauri::command]
 fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
     let conn = connect_database()?;
+
+    // Check if the invoices table exists and is properly initialized
+    let table_exists = conn
+        .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='invoices'")
+        .and_then(|mut stmt| stmt.query_row([], |row| row.get::<_, i32>(0)))
+        .unwrap_or(0) > 0;
+        
+    if !table_exists {
+        return Err("Invoice table not found".to_string());
+    }
 
     let mut stmt = conn
         .prepare(
@@ -225,7 +298,7 @@ fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
                 service: row.get(2)?,
                 invoice_date: row.get(3)?,
                 due_date: row.get(4)?,
-                vat_enabled: row.get::<_, i32>(5)? != 0,
+                vat_enabled: row.get::<_, bool>(5)?, // OCaml uses BOOLEAN not INTEGER
                 vat_rate: row.get(6)?,
                 created_at: row.get(7)?,
                 pdf_base64,
@@ -236,52 +309,54 @@ fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
     Ok(invoice)
 }
 
-// File operations with user-configurable directories
+// Legacy file operations (now using database)
 #[tauri::command]
 fn read_file(file_path: String) -> Result<String, String> {
-    let settings = get_app_settings()?;
-    let config_path = Path::new(&settings.config_directory).join(&file_path);
-
-    if config_path.exists() {
-        fs::read_to_string(&config_path)
-            .map_err(|e| format!("Failed to read file {}: {}", config_path.display(), e))
-    } else {
-        // Return empty string for non-existent files (allows for initial setup)
-        Ok(String::new())
-    }
+    // Map file names to setting keys
+    let setting_key = match file_path.as_str() {
+        "sender.txt" => "sender",
+        "bankdetails.txt" => "bankdetails",
+        "description.txt" => "description", 
+        "amount.txt" => "amount",
+        "recipients.txt" => "recipients",
+        _ => return Ok(String::new()),
+    };
+    
+    get_config_setting(setting_key.to_string())
 }
 
 #[tauri::command]
 fn write_file(file_path: String, content: String) -> Result<(), String> {
-    let settings = get_app_settings()?;
-    let config_path = Path::new(&settings.config_directory).join(&file_path);
-
-    // Ensure the config directory exists
-    if let Some(parent) = config_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-
-    fs::write(&config_path, content)
-        .map_err(|e| format!("Failed to write file {}: {}", config_path.display(), e))
+    // Map file names to setting keys
+    let setting_key = match file_path.as_str() {
+        "sender.txt" => "sender",
+        "bankdetails.txt" => "bankdetails",
+        "description.txt" => "description",
+        "amount.txt" => "amount",
+        "recipients.txt" => "recipients",
+        _ => return Err("Unknown config file".to_string()),
+    };
+    
+    set_config_setting(setting_key.to_string(), content)
 }
 
 // Read all config files
 #[tauri::command]
 fn read_all_files() -> Result<InvoiceFiles, String> {
     Ok(InvoiceFiles {
-        sender: read_file("sender.txt".to_string()).unwrap_or_default(),
-        bankdetails: read_file("bankdetails.txt".to_string()).unwrap_or_default(),
-        description: read_file("description.txt".to_string()).unwrap_or_default(),
-        amount: read_file("amount.txt".to_string()).unwrap_or_default(),
-        recipients: read_file("recipients.txt".to_string()).unwrap_or_default(),
+        sender: get_config_setting("sender".to_string())?,
+        bankdetails: get_config_setting("bankdetails".to_string())?,
+        description: get_config_setting("description".to_string())?,
+        amount: get_config_setting("amount".to_string())?,
+        recipients: get_config_setting("recipients".to_string())?,
     })
 }
 
 // Save invoice details (description and amount)
 #[tauri::command]
 fn save_invoice_details(description: String, amount: String) -> Result<(), String> {
-    write_file("description.txt".to_string(), description)?;
-    write_file("amount.txt".to_string(), amount)?;
+    set_config_setting("description".to_string(), description)?;
+    set_config_setting("amount".to_string(), amount)?;
     Ok(())
 }
 
@@ -323,40 +398,42 @@ fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
     )
 }
 
-// Copy config files to OCaml backend working directory
+// Setup OCaml environment - ensure shared database access
 fn setup_ocaml_environment() -> Result<PathBuf, String> {
-    let settings = get_app_settings()?;
     let ocaml_backend = get_bundled_ocaml_backend()?;
-    let ocaml_config = ocaml_backend.join("config");
-
-    // Ensure OCaml config directory exists
-    fs::create_dir_all(&ocaml_config)
-        .map_err(|e| format!("Failed to create OCaml config directory: {}", e))?;
-
-    // Copy config files from user config to OCaml config
-    let config_files = [
-        "sender.txt",
-        "bankdetails.txt",
-        "description.txt",
-        "amount.txt",
-        "recipients.txt",
-    ];
-
-    for file in config_files {
-        let user_config_path = Path::new(&settings.config_directory).join(file);
-        let ocaml_config_path = ocaml_config.join(file);
-
-        if user_config_path.exists() {
-            fs::copy(&user_config_path, &ocaml_config_path)
-                .map_err(|e| format!("Failed to copy {} to OCaml config: {}", file, e))?;
-        } else {
-            // Create empty file if it doesn't exist
-            fs::write(&ocaml_config_path, "")
-                .map_err(|e| format!("Failed to create empty {} in OCaml config: {}", file, e))?;
+    let shared_db_path = get_database_path()?;
+    let ocaml_db_path = ocaml_backend.join("invoices.db");
+    
+    // Always ensure OCaml backend uses the same database as Rust
+    // Create a symlink if possible, otherwise copy
+    if ocaml_db_path.exists() {
+        fs::remove_file(&ocaml_db_path)
+            .map_err(|e| format!("Failed to remove old OCaml database: {}", e))?;
+    }
+    
+    // Try to create a symlink first (more efficient), fallback to copy
+    match std::os::unix::fs::symlink(&shared_db_path, &ocaml_db_path) {
+        Ok(_) => {},
+        Err(_) => {
+            // Symlink failed, copy the database instead
+            if shared_db_path.exists() {
+                fs::copy(&shared_db_path, &ocaml_db_path)
+                    .map_err(|e| format!("Failed to copy database for OCaml backend: {}", e))?;
+            } else {
+                // Create empty database file if shared database doesn't exist yet
+                fs::File::create(&ocaml_db_path)
+                    .map_err(|e| format!("Failed to create OCaml database: {}", e))?;
+            }
         }
     }
 
     Ok(ocaml_backend)
+}
+
+// Sync database from OCaml backend to main app database (no longer needed with shared DB)
+fn sync_ocaml_database(_ocaml_backend: &Path) -> Result<(), String> {
+    // No sync needed since both use the same database file
+    Ok(())
 }
 
 // Copy generated PDFs back to user output directory
@@ -404,30 +481,37 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
     // Setup OCaml environment and copy config files
     let ocaml_backend = setup_ocaml_environment()?;
 
-    // Build the OCaml project first
-    let mut build_cmd = Command::new("dune");
-    build_cmd.current_dir(&ocaml_backend);
-    build_cmd.arg("build");
+    // Find the compiled OCaml binary
+    let binary_path = ocaml_backend.join("_build/default/src/main.exe");
+    
+    // Check if the binary exists (should be bundled pre-compiled)
+    if !binary_path.exists() {
+        // Fallback: try to build if in development mode
+        if cfg!(debug_assertions) {
+            let mut build_cmd = Command::new("dune");
+            build_cmd.current_dir(&ocaml_backend);
+            build_cmd.arg("build");
 
-    let build_output = build_cmd
-        .output()
-        .map_err(|e| format!("Failed to execute dune build: {}", e))?;
+            let build_output = build_cmd
+                .output()
+                .map_err(|e| format!("Failed to execute dune build: {}", e))?;
 
-    if !build_output.status.success() {
-        return Err(format!(
-            "Dune build failed: {}",
-            String::from_utf8_lossy(&build_output.stderr)
-        ));
+            if !build_output.status.success() {
+                return Err(format!(
+                    "Dune build failed: {}",
+                    String::from_utf8_lossy(&build_output.stderr)
+                ));
+            }
+        } else {
+            return Err("OCaml binary not found in bundle. The application may not be properly built.".to_string());
+        }
     }
 
-    // Run the invoice generation
-    let mut cmd = Command::new("dune");
+    // Run the invoice generation using the compiled binary directly
+    let mut cmd = Command::new(&binary_path);
     cmd.current_dir(&ocaml_backend);
-    cmd.arg("exec");
-    cmd.arg("src/main.exe");
 
     if dry_run {
-        cmd.arg("--");
         cmd.arg("-dry");
     }
 
@@ -441,6 +525,11 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
         // Copy generated PDFs to user output directory
         let copied_files = copy_generated_pdfs(&ocaml_backend)?;
 
+        // In production, sync the database after invoice generation
+        if !cfg!(debug_assertions) {
+            sync_ocaml_database(&ocaml_backend)?;
+        }
+
         let mut result = stdout;
         if !copied_files.is_empty() {
             result.push_str(&format!("\n\nGenerated PDFs copied to output directory:\n"));
@@ -453,6 +542,33 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
+}
+
+#[tauri::command]
+fn reset_database() -> Result<(), String> {
+    let db_path = get_database_path()?;
+    
+    // Remove existing database file if it exists
+    if db_path.exists() {
+        fs::remove_file(&db_path)
+            .map_err(|e| format!("Failed to remove database file: {}", e))?;
+    }
+    
+    // Create new database with fresh schema and example data
+    let conn = connect_database()?;
+    init_database(&conn)?;
+    
+    // Also reset settings to defaults
+    let settings_path = get_settings_path()?;
+    if settings_path.exists() {
+        fs::remove_file(&settings_path)
+            .map_err(|e| format!("Failed to remove settings file: {}", e))?;
+    }
+    
+    // Create fresh default settings
+    let _ = get_app_settings()?;
+    
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -470,7 +586,11 @@ pub fn run() {
             get_all_invoices,
             get_invoice_by_id,
             get_app_settings,
-            save_app_settings
+            save_app_settings,
+            get_config_setting,
+            set_config_setting,
+            is_first_run,
+            reset_database
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -22,18 +22,13 @@ jobs:
           dune-cache: false
 
       - name: Install OCaml dependencies
-        run: opam install -y camlpdf yojson sqlite3 dune alcotest
+        run: opam install -y camlpdf sqlite3 dune alcotest
 
-      - name: Run OCaml tests
+      - name: Run OCaml tests and build
         working-directory: ./ocaml-backend
         run: |
           eval $(opam env)
           dune runtest
-
-      - name: Build OCaml backend
-        working-directory: ./ocaml-backend
-        run: |
-          eval $(opam env)
           dune build
 
   lint:

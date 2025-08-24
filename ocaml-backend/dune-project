@@ -1,5 +1,5 @@
 (lang dune 3.0)
 
 (package
- (name invoice-generator-backend)
+ (name invoice-splitter-backend)
  (depends ocaml dune camlpdf alcotest sqlite3))

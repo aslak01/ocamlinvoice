@@ -20,31 +20,31 @@ let parse_recipient_block lines =
       adr = List.map String.trim (email_line :: address_lines) |> List.filter (fun s -> s <> "")
     }
 
+let parse_recipients_from_string content =
+  let lines = String.split_on_char '\n' content 
+              |> List.map String.trim in
+  
+  let rec split_into_blocks acc current_block = function
+    | [] -> 
+        if current_block = [] then acc
+        else (List.rev current_block) :: acc
+    | "" :: rest -> 
+        let acc' = if current_block = [] then acc else (List.rev current_block) :: acc in
+        split_into_blocks acc' [] rest
+    | line :: rest -> 
+        split_into_blocks acc (line :: current_block) rest
+  in
+  
+  let blocks = split_into_blocks [] [] lines |> List.rev in
+  List.filter_map parse_recipient_block blocks
+
 let parse_recipients_file filename =
   try
     let ic = open_in filename in
     let content = really_input_string ic (in_channel_length ic) in
     close_in ic;
     
-    let lines = String.split_on_char '\n' content 
-                |> List.map String.trim in
-    
-    let rec group_recipients acc current_group = function
-      | [] -> 
-        if current_group = [] then List.rev acc
-        else List.rev (List.rev current_group :: acc)
-      | line :: rest ->
-        if line = "" then
-          if current_group = [] then
-            group_recipients acc [] rest
-          else
-            group_recipients (List.rev current_group :: acc) [] rest
-        else
-          group_recipients acc (line :: current_group) rest
-    in
-    
-    let groups = group_recipients [] [] lines in
-    List.filter_map parse_recipient_block groups
+    parse_recipients_from_string content
   with
   | Sys_error _ -> []
   | exn -> 

@@ -39,9 +39,9 @@
     "longDescription": "A cross-platform desktop application for splitting invoices with OCaml backend processing and SQLite database storage. Features include batch processing, invoice history, and PDF preview.",
     "resources": [
       "../ocaml-backend/src/*",
-      "../ocaml-backend/config/*",
-      "../ocaml-backend/dune-project",
-      "../ocaml-backend/README.md"
+      "../ocaml-backend/dune-project", 
+      "../ocaml-backend/README.md",
+      "../ocaml-backend/_build/default/src/main.exe"
     ],
     "linux": {
       "deb": {

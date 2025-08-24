@@ -1,3 +1,0 @@
-Test Author
-Test Service
-Test Invoice PDF

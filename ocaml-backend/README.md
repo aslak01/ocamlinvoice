@@ -1,4 +1,4 @@
-# OCaml Invoice Generator Backend
+# InvoiceSplitter OCaml Backend
 
 ## 🎯 Core Features
 

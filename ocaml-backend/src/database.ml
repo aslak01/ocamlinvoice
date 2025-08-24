@@ -85,6 +85,12 @@ let create_tables db =
         value TEXT NOT NULL,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id)
       )");
+      
+    ("settings",
+     "CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )");
   ] in
   
   let rec create_all = function
@@ -104,6 +110,29 @@ let get_or_create_connection () =
     | Error msg -> Error msg
   )
   | exception Sqlite3.Error msg -> Error ("Failed to open database: " ^ msg)
+
+let get_setting db key =
+  try
+    let stmt = prepare db "SELECT value FROM settings WHERE key = ?" in
+    let _ = bind stmt 1 (Data.TEXT key) in
+    match step stmt with
+    | Rc.ROW -> (
+        let result = match column stmt 0 with
+          | Data.TEXT value -> Some value
+          | _ -> None in
+        let _ = finalize stmt in
+        result
+      )
+    | _ -> 
+        let _ = finalize stmt in
+        None
+  with
+  | Sqlite3.Error _ -> None
+
+let get_setting_or_default db key default_value =
+  match get_setting db key with
+  | Some value when String.trim value <> "" -> value
+  | _ -> default_value
 
 let generate_invoice_number db =
   let current_year = 

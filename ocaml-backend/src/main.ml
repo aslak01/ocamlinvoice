@@ -108,74 +108,71 @@ let process_recipients invoice_data bank_lines recipients invoice_info_opt =
 
 let run_cli_mode dry_run =
   try
-    (* Required files *)
-    let sender_file = "config/sender.txt" in
-    let bank_file = "config/bankdetails.txt" in
-    let description_file = "config/description.txt" in
-    let amount_file = "config/amount.txt" in
-    let invoice_file = "config/invoice.txt" in
+    (* Get database connection *)
+    let db = match Invoice_src.Database.get_or_create_connection () with
+      | Ok db -> db
+      | Error msg -> failwith ("Database error: " ^ msg)
+    in
     
-    (* Check required files exist *)
-    if not (Invoice_src.File_parsers.file_exists sender_file) then (
-      eprintf "Error: Required file %s not found\n" sender_file;
+    (* Read configuration from database *)
+    let sender_info = Invoice_src.Database.get_setting_or_default db "sender" "" in
+    let bank_info = Invoice_src.Database.get_setting_or_default db "bankdetails" "" in
+    let description = Invoice_src.Database.get_setting_or_default db "description" "" in
+    let amount_str = Invoice_src.Database.get_setting_or_default db "amount" "" in
+    
+    (* Check required settings *)
+    if String.trim sender_info = "" then (
+      eprintf "Error: Required setting 'sender' not found in database\n";
+      eprintf "Please configure sender information in the application\n";
       exit 1
     );
     
-    if not (Invoice_src.File_parsers.file_exists bank_file) then (
-      eprintf "Error: Required file %s not found\n" bank_file;
+    if String.trim bank_info = "" then (
+      eprintf "Error: Required setting 'bankdetails' not found in database\n";
+      eprintf "Please configure bank details in the application\n";
       exit 1
     );
     
-    (* Check for new separate files first, fallback to old format *)
-    let has_separate_files = 
-      Invoice_src.File_parsers.file_exists description_file && 
-      Invoice_src.File_parsers.file_exists amount_file in
-    
-    let has_old_invoice_file = Invoice_src.File_parsers.file_exists invoice_file in
-    
-    if not has_separate_files && not has_old_invoice_file then (
-      eprintf "Error: Neither separate files (%s, %s) nor old format file (%s) found\n" 
-        description_file amount_file invoice_file;
+    if String.trim description = "" then (
+      eprintf "Error: Required setting 'description' not found in database\n";
+      eprintf "Please configure service description in the application\n";
       exit 1
     );
     
-    (* Parse required files *)
-    printf "Reading sender details from %s...\n" sender_file;
-    let sender_lines = Invoice_src.File_parsers.parse_text_file sender_file in
+    if String.trim amount_str = "" then (
+      eprintf "Error: Required setting 'amount' not found in database\n";
+      eprintf "Please configure invoice amount in the application\n";
+      exit 1
+    );
     
-    printf "Reading bank details from %s...\n" bank_file;
-    let bank_lines = Invoice_src.File_parsers.parse_text_file bank_file in
+    (* Parse configuration from database *)
+    printf "Reading sender details from database...\n";
+    let sender_lines = String.split_on_char '\n' (String.trim sender_info) |> List.filter (fun s -> String.trim s <> "") in
     
-    (* Parse invoice details using appropriate method *)
-    let invoice_info = 
-      if has_separate_files then (
-        printf "Reading invoice details from %s and %s...\n" description_file amount_file;
-        match Invoice_src.Invoice_parser.parse_invoice_files description_file amount_file with
-        | Some info -> info
-        | None -> 
-            eprintf "Error: Failed to parse %s or %s\n" description_file amount_file;
-            exit 1
-      ) else (
-        printf "Reading invoice details from %s...\n" invoice_file;
-        match Invoice_src.Invoice_parser.parse_invoice_file invoice_file with
-        | Some info -> info
-        | None -> 
-            eprintf "Error: Failed to parse %s\n" invoice_file;
-            exit 1
-      ) in
+    printf "Reading bank details from database...\n";
+    let bank_lines = String.split_on_char '\n' (String.trim bank_info) |> List.filter (fun s -> String.trim s <> "") in
+    
+    (* Parse invoice details from database *)
+    printf "Reading invoice details from database (description and amount)...\n";
+    let amount_value = try Float.of_string (String.trim amount_str) with _ -> 0.0 in
+    let invoice_info = {
+      Invoice_src.Invoice_parser.description = description;
+      Invoice_src.Invoice_parser.total_amount = amount_value;
+    } in
     
     printf "Invoice description: %s\n" (if invoice_info.Invoice_src.Invoice_parser.description = "" then "(empty)" else invoice_info.Invoice_src.Invoice_parser.description);
     printf "Total amount: %.2f NOK\n" invoice_info.Invoice_src.Invoice_parser.total_amount;
     
-    (* Check for recipients.txt file *)
-    let recipients_file = "config/recipients.txt" in
+    (* Check for recipients in database *)
+    let recipients_info = Invoice_src.Database.get_setting_or_default db "recipients" "" in
     
-    if Invoice_src.Recipients_parser.recipients_file_exists recipients_file then (
-      printf "Found %s - generating invoices for multiple recipients\n" recipients_file;
-      let recipients = Invoice_src.Recipients_parser.parse_recipients_file recipients_file in
+    if String.trim recipients_info <> "" then (
+      printf "Found recipients in database - generating invoices for multiple recipients\n";
+      let recipients = Invoice_src.Recipients_parser.parse_recipients_from_string recipients_info in
       
       if List.length recipients = 0 then (
-        eprintf "Error: No valid recipients found in %s\n" recipients_file;
+        eprintf "Error: No valid recipients found in database\n";
+        eprintf "Please configure recipient information in the application\n";
         exit 1
       );
       
@@ -207,8 +204,8 @@ let run_cli_mode dry_run =
         process_recipients base_invoice_data bank_lines recipients (Some invoice_info)
       )
     ) else (
-      eprintf "Error: No recipients.txt file found\n";
-      eprintf "Please create a recipients.txt file with recipient information\n";
+      eprintf "Error: No recipients found in database\n";
+      eprintf "Please configure recipient information in the application\n";
       exit 1
     )
   with
