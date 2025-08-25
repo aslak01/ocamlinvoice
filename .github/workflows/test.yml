@@ -67,9 +67,9 @@ jobs:
           components: rustfmt, clippy
 
       - name: Check Rust formatting
-        working-directory: ./src-tauri
+        working-directory: ./tauri
         run: cargo fmt --all -- --check
 
       - name: Run Rust linting
-        working-directory: ./src-tauri
+        working-directory: ./tauri
         run: cargo clippy -- -D warnings
