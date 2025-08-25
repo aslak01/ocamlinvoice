@@ -76,7 +76,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Set up environment to avoid async handle issues
-          $env:DUNE_CACHE_STORAGE_MODE = "disabled"
+          $env:DUNE_CACHE_STORAGE_MODE = "copy"
           $env:DUNE_CACHE_TRANSPORT = "disabled"
 
           for ($i = 1; $i -le 3; $i++) {
@@ -119,7 +119,7 @@ jobs:
         working-directory: ./ocaml-backend
         run: |
           # Disable dune cache to avoid async handle issues on Windows
-          $env:DUNE_CACHE_STORAGE_MODE = "disabled"
+          $env:DUNE_CACHE_STORAGE_MODE = "copy"
           $env:DUNE_CACHE_TRANSPORT = "disabled"
 
           opam env | Invoke-Expression
