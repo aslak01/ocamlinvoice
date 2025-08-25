@@ -102,9 +102,34 @@ fn save_app_settings(settings: AppSettings) -> Result<(), String> {
 
 // Database functions
 fn get_database_path() -> Result<PathBuf, String> {
-    // Always use a consistent location in app data for shared access
-    let app_data = get_app_data_dir()?;
-    Ok(app_data.join("invoices.db"))
+    // Use project root for shared database access
+    let current_exe = std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?;
+    let exe_dir = current_exe.parent().ok_or("Failed to get executable directory")?;
+    
+    // In development, go up to project root from tauri/target/debug/
+    // In production, database should be in the same directory as the executable
+    let possible_paths = [
+        exe_dir.join("../../../invoices.db"), // Development: tauri/target/debug -> project root
+        exe_dir.join("../../invoices.db"),    // Alternative development path
+        exe_dir.join("invoices.db"),          // Production: same directory as executable
+        exe_dir.join("../invoices.db"),       // Alternative production path
+    ];
+    
+    for path in possible_paths {
+        if path.exists() {
+            return path.canonicalize()
+                .map_err(|e| format!("Failed to canonicalize database path: {}", e));
+        }
+    }
+    
+    // If database doesn't exist, create it in project root (development) or executable directory (production)
+    let default_path = if cfg!(debug_assertions) {
+        exe_dir.join("../../../invoices.db") // Development
+    } else {
+        exe_dir.join("invoices.db") // Production
+    };
+    
+    Ok(default_path)
 }
 
 fn connect_database() -> Result<Connection, String> {
@@ -375,9 +400,10 @@ fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
 
     // Try different possible locations
     let possible_paths = [
-        // Development mode (from project root/src-tauri)
-        exe_dir.join("../ocaml-backend"),
-        exe_dir.join("../../ocaml-backend"),
+        // Development mode (from project root/tauri)
+        exe_dir.join("../../../ocaml-backend"), // From tauri/target/debug
+        exe_dir.join("../../ocaml-backend"),    // From tauri/target  
+        exe_dir.join("../ocaml-backend"),       // From tauri/
         // Production mode (bundled)
         exe_dir.join("ocaml-backend"),
         // macOS app bundle - the actual path based on bundle structure
