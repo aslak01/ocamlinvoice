@@ -1,5 +1,4 @@
 use base64::{engine::general_purpose, Engine as _};
-use dirs;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -111,10 +110,10 @@ fn get_database_path() -> Result<PathBuf, String> {
 fn connect_database() -> Result<Connection, String> {
     let db_path = get_database_path()?;
     let conn = Connection::open(db_path).map_err(|e| format!("Failed to open database: {}", e))?;
-    
+
     // Initialize the database schema
     init_database(&conn)?;
-    
+
     Ok(conn)
 }
 
@@ -126,8 +125,9 @@ fn init_database(conn: &Connection) -> Result<(), String> {
             value TEXT NOT NULL
         )",
         [],
-    ).map_err(|e| format!("Failed to create settings table: {}", e))?;
-    
+    )
+    .map_err(|e| format!("Failed to create settings table: {}", e))?;
+
     // Initialize example settings for first-time users
     let examples = [
         ("sender", "Your Company Name\nYour Address\nCity, Postal Code\nCountry"),
@@ -137,14 +137,15 @@ fn init_database(conn: &Connection) -> Result<(), String> {
         ("recipients", "Client Company\nclient@example.com\nClient Address\nCity, Postal Code\n\nAnother Client\nanother@example.com\nAnother Address\nCity, Postal Code"),
         ("_app_initialized", "true"),
     ];
-    
+
     for (key, example_value) in examples {
         conn.execute(
             "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
             [key, example_value],
-        ).map_err(|e| format!("Failed to insert example setting {}: {}", key, e))?;
+        )
+        .map_err(|e| format!("Failed to insert example setting {}: {}", key, e))?;
     }
-    
+
     Ok(())
 }
 
@@ -157,25 +158,26 @@ fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
     let table_exists = conn
         .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='invoices'")
         .and_then(|mut stmt| stmt.query_row([], |row| row.get::<_, i32>(0)))
-        .unwrap_or(0) > 0;
-        
+        .unwrap_or(0)
+        > 0;
+
     if !table_exists {
         // No invoices table yet - return empty list
         return Ok(Vec::new());
     }
-    
+
     // Check if table has the expected schema
     let has_locale = conn
         .prepare("PRAGMA table_info(invoices)")
         .and_then(|mut stmt| {
             let rows = stmt.query_map([], |row| {
-                Ok(row.get::<_, String>(1)?) // column name
+                row.get::<_, String>(1) // column name
             })?;
             let columns: Vec<String> = rows.collect::<Result<Vec<_>, _>>()?;
             Ok(columns.contains(&"locale".to_string()))
         })
         .unwrap_or(false);
-        
+
     if !has_locale {
         // Table exists but doesn't have expected schema - return empty list
         return Ok(Vec::new());
@@ -221,12 +223,12 @@ fn get_all_invoices() -> Result<Vec<InvoiceRecord>, String> {
 // Settings management functions
 fn get_setting(key: &str) -> Result<Option<String>, String> {
     let conn = connect_database()?;
-    
+
     let mut stmt = conn
         .prepare("SELECT value FROM settings WHERE key = ?")
         .map_err(|e| format!("Failed to prepare query: {}", e))?;
-    
-    match stmt.query_row([key], |row| Ok(row.get::<_, String>(0)?)) {
+
+    match stmt.query_row([key], |row| row.get::<_, String>(0)) {
         Ok(value) => Ok(Some(value)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
         Err(e) => Err(format!("Failed to get setting: {}", e)),
@@ -235,12 +237,13 @@ fn get_setting(key: &str) -> Result<Option<String>, String> {
 
 fn set_setting(key: &str, value: &str) -> Result<(), String> {
     let conn = connect_database()?;
-    
+
     conn.execute(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
         [key, value],
-    ).map_err(|e| format!("Failed to set setting: {}", e))?;
-    
+    )
+    .map_err(|e| format!("Failed to set setting: {}", e))?;
+
     Ok(())
 }
 
@@ -272,8 +275,9 @@ fn get_invoice_by_id(id: i32) -> Result<InvoiceRecord, String> {
     let table_exists = conn
         .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='invoices'")
         .and_then(|mut stmt| stmt.query_row([], |row| row.get::<_, i32>(0)))
-        .unwrap_or(0) > 0;
-        
+        .unwrap_or(0)
+        > 0;
+
     if !table_exists {
         return Err("Invoice table not found".to_string());
     }
@@ -316,12 +320,12 @@ fn read_file(file_path: String) -> Result<String, String> {
     let setting_key = match file_path.as_str() {
         "sender.txt" => "sender",
         "bankdetails.txt" => "bankdetails",
-        "description.txt" => "description", 
+        "description.txt" => "description",
         "amount.txt" => "amount",
         "recipients.txt" => "recipients",
         _ => return Ok(String::new()),
     };
-    
+
     get_config_setting(setting_key.to_string())
 }
 
@@ -336,7 +340,7 @@ fn write_file(file_path: String, content: String) -> Result<(), String> {
         "recipients.txt" => "recipients",
         _ => return Err("Unknown config file".to_string()),
     };
-    
+
     set_config_setting(setting_key.to_string(), content)
 }
 
@@ -386,9 +390,9 @@ fn get_bundled_ocaml_backend() -> Result<PathBuf, String> {
 
     for path in possible_paths {
         if path.exists() && path.join("src").exists() {
-            return Ok(path
+            return path
                 .canonicalize()
-                .map_err(|e| format!("Failed to canonicalize path: {}", e))?);
+                .map_err(|e| format!("Failed to canonicalize path: {}", e));
         }
     }
 
@@ -403,17 +407,17 @@ fn setup_ocaml_environment() -> Result<PathBuf, String> {
     let ocaml_backend = get_bundled_ocaml_backend()?;
     let shared_db_path = get_database_path()?;
     let ocaml_db_path = ocaml_backend.join("invoices.db");
-    
+
     // Always ensure OCaml backend uses the same database as Rust
     // Create a symlink if possible, otherwise copy
     if ocaml_db_path.exists() {
         fs::remove_file(&ocaml_db_path)
             .map_err(|e| format!("Failed to remove old OCaml database: {}", e))?;
     }
-    
+
     // Try to create a symlink first (more efficient), fallback to copy
     match std::os::unix::fs::symlink(&shared_db_path, &ocaml_db_path) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {
             // Symlink failed, copy the database instead
             if shared_db_path.exists() {
@@ -483,7 +487,7 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 
     // Find the compiled OCaml binary
     let binary_path = ocaml_backend.join("_build/default/src/main.exe");
-    
+
     // Check if the binary exists (should be bundled pre-compiled)
     if !binary_path.exists() {
         // Fallback: try to build if in development mode
@@ -503,7 +507,10 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
                 ));
             }
         } else {
-            return Err("OCaml binary not found in bundle. The application may not be properly built.".to_string());
+            return Err(
+                "OCaml binary not found in bundle. The application may not be properly built."
+                    .to_string(),
+            );
         }
     }
 
@@ -532,7 +539,7 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 
         let mut result = stdout;
         if !copied_files.is_empty() {
-            result.push_str(&format!("\n\nGenerated PDFs copied to output directory:\n"));
+            result.push_str("\n\nGenerated PDFs copied to output directory:\n");
             for file in copied_files {
                 result.push_str(&format!("- {}\n", file));
             }
@@ -547,27 +554,26 @@ fn generate_invoices(dry_run: bool) -> Result<String, String> {
 #[tauri::command]
 fn reset_database() -> Result<(), String> {
     let db_path = get_database_path()?;
-    
+
     // Remove existing database file if it exists
     if db_path.exists() {
-        fs::remove_file(&db_path)
-            .map_err(|e| format!("Failed to remove database file: {}", e))?;
+        fs::remove_file(&db_path).map_err(|e| format!("Failed to remove database file: {}", e))?;
     }
-    
+
     // Create new database with fresh schema and example data
     let conn = connect_database()?;
     init_database(&conn)?;
-    
+
     // Also reset settings to defaults
     let settings_path = get_settings_path()?;
     if settings_path.exists() {
         fs::remove_file(&settings_path)
             .map_err(|e| format!("Failed to remove settings file: {}", e))?;
     }
-    
+
     // Create fresh default settings
     let _ = get_app_settings()?;
-    
+
     Ok(())
 }
 

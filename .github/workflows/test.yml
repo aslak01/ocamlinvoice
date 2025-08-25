@@ -73,4 +73,3 @@ jobs:
       - name: Run Rust linting
         working-directory: ./src-tauri
         run: cargo clippy -- -D warnings
-
