@@ -442,7 +442,12 @@ fn setup_ocaml_environment() -> Result<PathBuf, String> {
     }
 
     // Try to create a symlink first (more efficient), fallback to copy
-    match std::os::unix::fs::symlink(&shared_db_path, &ocaml_db_path) {
+    #[cfg(unix)]
+    let symlink_result = std::os::unix::fs::symlink(&shared_db_path, &ocaml_db_path);
+    #[cfg(windows)]
+    let symlink_result: Result<(), std::io::Error> = Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "Symlinks not supported on Windows"));
+    
+    match symlink_result {
         Ok(_) => {}
         Err(_) => {
             // Symlink failed, copy the database instead
